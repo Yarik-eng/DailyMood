@@ -1,0 +1,483 @@
+/* DailyMood custom styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+/* Theme toggle styles (Uiverse.io animation) - keep these selectors unchanged */
+#theme-toggle-button {
+  font-size: 17px;
+  position: relative;
+  display: inline-block;
+  width: 7em;
+  cursor: pointer;
+}
+
+/* Make the toggle input overlay the svg so the area is clickable */
+#theme-toggle-button input#toggle {
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;  /* matches the SVG width attribute */
+  height: 28px; /* matches the SVG height attribute */
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Keep the original animation selectors to preserve Uiverse behavior */
+#container,
+#patches,
+#stars,
+#button,
+#sun,
+#moon,
+#cloud {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.25s;
+}
+#toggle:checked + svg #container { fill: #2b4360; }
+#toggle:checked + svg #button { transform: translate(28px, 2.333px); }
+#sun { opacity: 1; }
+#toggle:checked + svg #sun { opacity: 0; }
+#moon { opacity: 0; }
+#toggle:checked + svg #moon { opacity: 1; }
+#cloud { opacity: 1; }
+#toggle:checked + svg #cloud { opacity: 0; }
+#stars { opacity: 0; }
+#toggle:checked + svg #stars { opacity: 1; }
+
+/* Small helpers and fallbacks for the rest of the page */
+/* Prefer using html background so entire viewport changes with theme */
+html {
+  /* light gradient background by default */
+  background: linear-gradient(135deg,#eef2ff,#fff7ed);
+  transition: background-color 0.35s ease, background 0.35s ease;
+  color: #0f172a;
+}
+
+html.dark {
+  /* dark gradient background when html has .dark */
+  background: linear-gradient(135deg,#071126,#0b1220);
+  transition: background-color 0.35s ease, background 0.35s ease;
+  color: #e6eef8;
+}
+
+/* Body-level helper classes used by JS for immediate styling */
+/* body-level helper classes retained for compatibility with older scripts */
+body.dark-mode {
+  background-color: transparent; /* let html background show through */
+  color: #e6eef8;
+}
+body.light-mode {
+  background-color: transparent;
+  color: #0f172a;
+}
+
+/* Ensure body is transparent so html background fills viewport */
+/* Force body to be transparent so the html background (light/dark) shows through.
+   Use !important to override Tailwind utility classes applied on the body element. */
+body {
+  background: transparent !important;
+  background-image: none !important;
+  transition: background 0.35s ease, color 0.25s ease;
+  /* keep content centered horizontally but allow header to stay at top */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* header will sit at the top */
+  min-height: 100vh;
+  padding: 8px 0 40px 0; /* small top padding so sticky header isn't flush to viewport edge */
+}
+
+/* Also defensively clear any utility-generated backgrounds by matching common Tailwind bg-* on body */
+body[class*="bg-"] {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Focus ring when keyboard-focusing the toggle */
+#theme-toggle-button input:focus + svg { outline: 2px solid rgba(99,102,241,0.25); border-radius: 6px; }
+
+/* Floating toggle wrapper/label (used for the top-right floating button) */
+#theme-toggle-float { display:inline-block; position:relative; }
+#theme-toggle-float input#toggle { position:absolute; left:0; top:0; width:48px; height:24px; opacity:0; cursor:pointer; z-index:3; }
+#theme-float-wrapper svg { filter: drop-shadow(0 6px 16px rgba(2,6,23,0.08)); border-radius:6px; }
+
+/* Optional: ensure page elements inherit the body text color if not using Tailwind classes */
+body.dark-mode * { color: inherit; }
+body.light-mode * { color: inherit; }
+
+/* Buttons: stronger contrast and interactions for visibility */
+.btn {
+  --btn-accent: #6366f1; /* indigo-500 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(180deg, var(--btn-accent), #4f46e5);
+  box-shadow: 0 10px 30px rgba(79,70,229,0.12);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: transform 180ms cubic-bezier(.2,.9,.2,1), box-shadow 180ms ease, opacity 180ms ease;
+}
+.btn:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(79,70,229,0.14); }
+.btn:active { transform: translateY(0); box-shadow: 0 8px 20px rgba(79,70,229,0.10); }
+.btn:focus { outline: 3px solid rgba(99,102,241,0.14); outline-offset: 2px; }
+
+.btn.secondary {
+  background: transparent;
+  color: var(--btn-accent);
+  border: 1px solid rgba(99,102,241,0.14);
+  box-shadow: none;
+}
+.btn.secondary:hover { background: rgba(99,102,241,0.06); transform: translateY(-2px); }
+
+/* Make small buttons slightly larger on dark theme for contrast */
+html.dark .btn { box-shadow: 0 10px 30px rgba(139,92,246,0.08); }
+html.dark .btn.secondary { border-color: rgba(139,92,246,0.14); }
+
+/* Quote enter/exit animations used by JS */
+.fade-enter { opacity: 0; transform: translateY(8px) scale(.995); }
+.fade-enter-active { transition: opacity .34s ease, transform .34s cubic-bezier(.2,.9,.2,1); opacity: 1; transform: translateY(0) scale(1); }
+.fade-exit { opacity: 1; transform: translateY(0) scale(1); }
+.fade-exit-active { transition: opacity .28s ease, transform .28s cubic-bezier(.2,.9,.2,1); opacity: 0; transform: translateY(-8px) scale(.995); }
+
+/* Improve visibility of the 'muted' hint line in darker backgrounds */
+.muted { background: rgba(0,0,0,0.02); padding: 8px 12px; border-radius: 8px; }
+html.dark .muted { background: rgba(255,255,255,0.02); }
+
+/* Container: center the main application area */
+.container {
+  max-width: 980px; /* limit content width */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 28px 20px;
+  box-sizing: border-box;
+}
+
+/* Ensure header and main content align within the centered container */
+.container header, .container main, .container footer { width: 100%; }
+
+/* Center the main area vertically while leaving header at top */
+.container main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 140px); /* leave space for header + footer/padding */
+}
+
+/* Card typography and glow */
+.card {
+  position: relative; /* allow glow pseudo-element */
+  z-index: 50; /* bring card well above glow layers */
+  overflow: visible !important; /* ensure glow is visible outside the card */
+}
+.card {
+  width: 100%;
+  max-width: 760px;
+  background: linear-gradient(180deg, rgba(99,102,241,0.06), rgba(2,6,23,0.02));
+  border-radius: 14px;
+  padding: 26px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text);
+  /* stronger layered glow via box-shadow to ensure visibility on dark backgrounds */
+  box-shadow:
+    0 30px 80px rgba(2,6,23,0.7),
+    0 18px 80px rgba(56,189,248,0.08),
+    0 0 180px rgba(99,102,241,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+}
+/* Theme-aware panel helper used by About page and any other informational panels.
+   It reuses the .card visuals but lays out content vertically, and ensures
+   Tailwind utility dark: classes won't override the intended themed background. */
+.theme-panel {
+  display: block; /* allow paragraphs and headings to layout normally */
+  max-width: 820px;
+  text-align: left;
+  padding: 32px;
+  box-sizing: border-box;
+}
+.theme-panel h1, .theme-panel h2, .theme-panel h3, .theme-panel p { color: inherit; }
+
+/* Aurora-style animated glow: two layered pseudo-elements */
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 260%;
+  height: 160%;
+  pointer-events: none;
+  z-index: -4; /* keep glow well behind the card */
+  filter: blur(140px) contrast(170%);
+  opacity: 1;
+  mix-blend-mode: screen;
+}
+
+.card::before {
+  background: radial-gradient(closest-side, rgba(56,189,248,0.42), rgba(96,165,250,0.36) 26%, rgba(99,102,241,0.18) 48%, rgba(99,102,241,0) 72%);
+  /* slightly faster and with a gentle 'breathing' pulse */
+  animation: aurora-shift-1 8.5s linear infinite;
+}
+
+.card::after {
+  background: radial-gradient(closest-side, rgba(14,165,233,0.36), rgba(99,102,241,0.30) 34%, rgba(139,92,246,0.16) 58%, rgba(99,102,241,0) 80%);
+  transform: translate(-52%, -48%) rotate(6deg);
+  /* slightly faster and with a gentle 'breathing' pulse */
+  animation: aurora-shift-2 10.5s linear infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes aurora-shift-1 {
+  0% { transform: translate(-50%, -50%) scale(0.995) rotate(0deg); opacity: 0.9; }
+  25% { transform: translate(-48.5%, -52.5%) scale(1.05) rotate(1deg); opacity: 0.98; }
+  50% { transform: translate(-46%, -54%) scale(1.12) rotate(2deg); opacity: 1; }
+  75% { transform: translate(-54%, -46%) scale(1.06) rotate(-1deg); opacity: 0.96; }
+  100% { transform: translate(-50%, -50%) scale(0.995) rotate(0deg); opacity: 0.9; }
+}
+
+@keyframes aurora-shift-2 {
+  0% { transform: translate(-52%, -48%) scale(0.995) rotate(6deg); opacity: 0.85; }
+  30% { transform: translate(-54%, -46%) scale(1.06) rotate(4deg); opacity: 0.95; }
+  60% { transform: translate(-56%, -44%) scale(1.14) rotate(1deg); opacity: 1; }
+  90% { transform: translate(-48%, -52%) scale(1.04) rotate(5deg); opacity: 0.92; }
+  100% { transform: translate(-52%, -48%) scale(0.995) rotate(6deg); opacity: 0.85; }
+}
+
+.quote-inner {
+  font-size: 1.18rem; /* slightly larger */
+  font-weight: 600; /* bolder */
+  line-height: 1.7;
+  max-width: 88%;
+}
+
+.brand { font-weight: 800; font-size: 1.08rem; }
+
+.btn { font-weight: 700; }
+
+/* Header / Navigation styles */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.brand-wrap { display: flex; flex-direction: column; }
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--accent); text-decoration: none; }
+.subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+
+.site-nav { display: flex; align-items: center; gap: 16px; }
+.nav-item { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 8px; }
+.nav-item:hover { color: var(--accent); background: rgba(99,102,241,0.03); }
+.nav-active { color: var(--accent); font-weight: 600; }
+.nav-spacer { width: 220px; display: inline-block; }
+
+/* subtle underline for active/hover nav items */
+.nav-item { position: relative; }
+.nav-item::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -6px; height: 2px; background: transparent; border-radius: 2px; transition: background-color .18s ease, transform .18s ease; transform-origin: left; transform: scaleX(0); }
+.nav-item:hover::after, .nav-active::after { background: var(--accent); transform: scaleX(1); }
+
+.header-controls { display: flex; align-items: center; gap: 8px; }
+.header-controls label { position: relative; }
+
+/* Theme-specific aurora colors */
+/* Cold aurora for dark theme */
+html.dark .card {
+  /* ensure card blocks glow by using an opaque background and a strong shadow */
+  background: rgba(7,17,34,1);
+  box-shadow:
+    0 40px 120px rgba(0,8,20,0.9),
+    0 36px 180px rgba(56,189,248,0.22),
+    0 0 320px rgba(99,102,241,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+}
+html.dark .card::before {
+  background: radial-gradient(closest-side, rgba(56,189,248,0.36), rgba(96,165,250,0.26) 28%, rgba(99,102,241,0.12) 50%, rgba(99,102,241,0) 72%);
+  filter: blur(90px) contrast(150%);
+  opacity: 1;
+}
+html.dark .card::after {
+  background: radial-gradient(closest-side, rgba(14,165,233,0.30), rgba(99,102,241,0.22) 36%, rgba(139,92,246,0.12) 60%, rgba(99,102,241,0) 80%);
+  filter: blur(92px) contrast(150%);
+  opacity: 1;
+}
+
+/* Warm aurora for light theme */
+html:not(.dark) .card {
+  /* light theme: use warm opaque card background so glow doesn't wash content */
+  background: rgba(255,250,240,1);
+  box-shadow:
+    0 40px 120px rgba(12,10,8,0.08),
+    0 36px 160px rgba(255,160,64,0.22),
+    0 0 260px rgba(255,200,80,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+}
+html:not(.dark) .card::before {
+  background: radial-gradient(closest-side, rgba(255,160,64,0.34), rgba(255,200,80,0.26) 28%, rgba(255,140,50,0.10) 50%, rgba(255,140,50,0) 72%);
+  filter: blur(90px) contrast(120%);
+  opacity: 1;
+}
+html:not(.dark) .card::after {
+  background: radial-gradient(closest-side, rgba(255,120,40,0.28), rgba(255,200,80,0.18) 36%, rgba(255,90,60,0.08) 60%, rgba(255,200,80,0) 80%);
+  filter: blur(92px) contrast(120%);
+  opacity: 0.95;
+}
+
+/* Ensure theme-panel explicitly follows the card theme and overrides any Tailwind dark: utility applied inline in templates */
+.theme-panel {
+  background: inherit !important; /* inherit from .card rules above */
+  box-shadow: inherit !important;
+  color: inherit !important;
+}
+
+/* Explicitly tune text colors inside the theme-panel for both themes to avoid utility overrides */
+html.dark .theme-panel h1, html.dark .theme-panel h2, html.dark .theme-panel h3, html.dark .theme-panel p {
+  color: #e6eef8 !important;
+}
+html:not(.dark) .theme-panel h1, html:not(.dark) .theme-panel h2, html:not(.dark) .theme-panel h3, html:not(.dark) .theme-panel p {
+  color: #0f172a !important;
+}
+
+/* Favorites list layout: keep actions to the right on wide screens, wrap below on small screens */
+.fav-item { padding: 14px; }
+.fav-row { display: flex; gap: 16px; align-items: center; }
+.fav-text { flex: 1; }
+.fav-quote { font-weight: 700; }
+.fav-actions { display: flex; flex-direction: column; gap: 8px; margin-left: 12px; align-items: flex-end; }
+
+@media (max-width: 880px) {
+  .fav-row { flex-direction: column; align-items: stretch; }
+  .fav-actions { flex-direction: row; justify-content: flex-end; gap: 10px; margin-left: 0; margin-top: 8px; }
+}
+
+/* prevent actions from visually escaping the card due to shadows or transforms */
+.fav-item { overflow: hidden; position: relative; }
+.fav-actions button { white-space: nowrap; }
+
+/* On wide screens make action buttons stacked but equal width for visual balance */
+@media (min-width: 881px) {
+  .fav-actions { flex-direction: column; min-width: 120px; align-items: flex-end; }
+  .fav-actions button { width: 110px; height: 40px; }
+}
+
+/* Make panel-level action buttons centered and toned down in glow */
+.panel-actions { display:flex; gap:10px; justify-content:center; margin-top:18px; position: relative; z-index: 260; }
+.panel-actions { padding: 6px; border-radius: 28px; }
+.panel-actions .btn { padding: 8px 12px; border-radius: 10px; }
+
+/* Compact opaque pill behind the panel buttons to block aurora glow while preserving button colors */
+.panel-actions::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 40px);
+  height: calc(100% + 12px);
+  border-radius: 32px;
+  z-index: -1; /* sits behind the buttons */
+  pointer-events: none;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+html.dark .panel-actions::before {
+  background: rgba(2,6,23,0.66);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+html:not(.dark) .panel-actions::before {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(2,6,23,0.04);
+}
+
+@media (max-width: 520px) {
+  .panel-actions { padding: 4px; }
+  .panel-actions::before { display: none; }
+}
+
+/* Add a compact oval backdrop behind the inline controls (New Quote / Copy / Save)
+   to prevent aurora glow from washing out the buttons while preserving their colors. */
+.controls { position: relative; z-index: 180; padding: 6px; border-radius: 28px; }
+.controls::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 28px);
+  height: calc(100% + 12px);
+  border-radius: 28px;
+  z-index: -1; /* behind the buttons */
+  pointer-events: none;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.02);
+}
+html.dark .controls::before { background: rgba(2,6,23,0.5); border: 1px solid rgba(255,255,255,0.02); }
+html:not(.dark) .controls::before { background: rgba(255,255,255,0.88); border: 1px solid rgba(2,6,23,0.04); }
+
+@media (max-width: 520px) {
+  .controls::before { display: none; }
+}
+
+/* Tone down button shadows inside theme-panel to avoid over-bright look */
+.theme-panel .btn { box-shadow: 0 6px 12px rgba(79,70,229,0.06); }
+.theme-panel .btn.secondary { box-shadow: none; border: 1px solid rgba(255,255,255,0.04); opacity: 0.95; }
+
+/* Make action buttons slightly smaller to avoid overflow visual */
+.fav-actions button { padding: 6px 10px; font-size: 0.95rem; }
+
+/* Strong overrides for Favorites page to ensure consistent layout and reduced glow.
+  Buttons receive higher z-index and a subtle halo (pseudo-element) so they sit above
+  the animated aurora and remain legible. Use !important sparingly to overcome cached CSS. */
+.theme-panel .fav-actions { align-items: flex-end !important; z-index: 220 !important; }
+.theme-panel .fav-actions button { width: 100px !important; height: 40px !important; padding: 6px 10px !important; box-shadow: 0 14px 36px rgba(59,36,139,0.22) !important; border: 1px solid rgba(255,255,255,0.12) !important; background: linear-gradient(180deg,#8b5cf6,#7c3aed) !important; color: #fff !important; position: relative !important; z-index: 230 !important; }
+.theme-panel .fav-actions button::before { content: ''; position: absolute; left: -10px; right: -10px; top: -10px; bottom: -10px; border-radius: 12px; background: radial-gradient(circle at center, rgba(124,58,237,0.08), rgba(99,102,241,0) 45%); filter: blur(10px); z-index: 220; pointer-events: none; }
+.theme-panel .fav-actions .btn.secondary { background: rgba(255,255,255,0.04) !important; color: rgba(255,255,255,0.98) !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 8px 18px rgba(2,6,23,0.36) !important; }
+.panel-actions { justify-content: center !important; z-index: 220 !important; }
+.panel-actions .btn { box-shadow: 0 14px 32px rgba(79,70,229,0.16) !important; opacity: 1 !important; position: relative !important; }
+.panel-actions .btn::before { content: ''; position: absolute; left: -8px; right: -8px; top: -8px; bottom: -8px; border-radius: 12px; background: radial-gradient(circle at center, rgba(124,58,237,0.06), rgba(99,102,241,0) 40%); filter: blur(12px); z-index: 210; pointer-events: none; }
+
+/* Opaque oval frames behind buttons to prevent aurora bleed-through. They are non-interactive
+   and sized slightly larger than the buttons. Theme-aware: darker in dark mode, semi-white in light. */
+/* Removed oval frames behind buttons per user request. */
+.fav-actions::after, .panel-actions::before { display: none !important; }
+
+/* Hover/focus states to improve affordance */
+.theme-panel .fav-actions button:hover, .theme-panel .fav-actions button:focus { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(59,36,139,0.28) !important; }
+.panel-actions .btn:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(59,36,139,0.18) !important; }
+/* Reduce card shadow for theme-panel specifically so bottom buttons aren't washed out */
+.theme-panel { box-shadow: 0 22px 56px rgba(2,6,23,0.55) !important; }
+
+/* Ensure fav-item doesn't clip the button visually but still contains shadows */
+.fav-item { overflow: visible !important; }
+
+/* Position actions absolutely inside each fav-item so they don't shift with text height */
+.fav-item { position: relative; }
+.fav-actions { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); }
+.fav-actions button { display: block; margin-bottom: 8px; }
+
+/* On small screens, revert to flow layout (actions below text) */
+@media (max-width: 880px) {
+  .fav-actions { position: static; transform: none; right: auto; top: auto; display: flex; gap: 10px; }
+  .fav-actions button { margin-bottom: 0; }
+}
+
+/* High-contrast override: make buttons clearly visible over bright/dark auras.
+   Apply this class to .theme-panel when you want maximum visibility. */
+/* Emphasize only the bottom panel action buttons (Clear all / Back home) */
+.panel-actions .btn.primary-emphasis { background: #ff8c42 !important; color: #041024 !important; box-shadow: 0 20px 48px rgba(255,140,66,0.18) !important; border: 1px solid rgba(4,16,36,0.06) !important; }
+.panel-actions .btn.secondary-emphasis { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.95) !important; border: 1px solid rgba(255,255,255,0.06) !important; box-shadow: 0 12px 30px rgba(0,0,0,0.12) !important; }
