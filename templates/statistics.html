@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика настрою - DailyMood{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js для графіків -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="statistics-container card theme-panel">
+    <h1>Аналіз вашого настрою</h1>
+    
+    <section class="card theme-panel mood-overview">
+        <h2>Загальна статистика</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Записів за останній місяць</h3>
+                <p class="stat-number">{{ monthly_entries or 0 }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Найчастіший настрій</h3>
+                <p class="stat-text">{{ most_common_mood or '-' }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Середній настрій</h3>
+                <p class="stat-text">{{ average_mood or '-' }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="mood-charts">
+        <div class="chart-container">
+            <h2>Тренд настрою за останній місяць</h2>
+            <canvas id="moodTrendChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h2>Розподіл настроїв</h2>
+            <canvas id="moodDistributionChart"></canvas>
+        </div>
+    </section>
+
+    <section class="mood-calendar">
+        <h2>Календар настрою</h2>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <button id="moodPrevMonth" class="small-btn">◀</button>
+            <div id="moodMonthLabel" style="font-weight:700;min-width:220px;text-align:center;"></div>
+            <button id="moodNextMonth" class="small-btn">▶</button>
+        </div>
+        <div class="calendar-grid" id="moodCalendar">
+            <!-- Calendar content will be rendered by JavaScript for the selected month -->
+        </div>
+    </section>
+
+    <section class="quotes-stats card theme-panel">
+        <h2>Статистика цитат</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Збережено цитат</h3>
+                <p id="quotesSavedCount" class="stat-number">{{ quotes_count or 0 }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Улюблених цитат</h3>
+                <p id="favoriteQuotesCount" class="stat-number">{{ favorite_quotes_count or 0 }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Цитата дня</h3>
+                <p class="quote-text" id="dailyQuoteText">{{ daily_quote or '' }}</p>
+                <p class="quote-author" id="dailyQuoteAuthor">{{ daily_quote_author or '' }}</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+    // Defensive: initialize moodData and assign backend data when available
+    let moodData = { dates: [], values: [], moods: [], counts: [] };
+    {% if mood_data %}
+    moodData = {{ mood_data | tojson }};
+    {% endif %}
+
+    // Helper to safely create charts only when data arrays exist
+    function createTrendChart(data) {
+        const trendEl = document.getElementById('moodTrendChart');
+        if (!trendEl) return;
+        const ctx = trendEl.getContext && trendEl.getContext('2d');
+        if (!ctx) return;
+        const labels = Array.isArray(data.dates) ? data.dates : [];
+        const values = Array.isArray(data.values) ? data.values : [];
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Настрій',
+                    data: values,
+                    borderColor: '#4CAF50',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function createDistributionChart(data) {
+        const distEl = document.getElementById('moodDistributionChart');
+        if (!distEl) return;
+        const ctx = distEl.getContext && distEl.getContext('2d');
+        if (!ctx) return;
+        const labels = Array.isArray(data.moods) ? data.moods : [];
+        const counts = Array.isArray(data.counts) ? data.counts : [];
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{ data: counts, backgroundColor: ['#4CAF50','#2196F3','#FFC107','#F44336','#9C27B0'] }]
+            }
+        });
+    }
+
+    // Month-aware mood calendar
+    let moodYear = (new Date()).getFullYear();
+    let moodMonth = (new Date()).getMonth();
+
+    // Translation-aware helpers for month and weekday names
+    function getTranslatedMonthName_stat(month, year) {
+        try {
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.month_names)) {
+                return translations_uk.month_names[month] + ' ' + year;
+            }
+            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.month_names)) {
+                return translations_en.month_names[month] + ' ' + year;
+            }
+        } catch (e) { /* ignore */ }
+        const d = new Date(year, month, 1);
+        return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    function getTranslatedWeekdayShort_stat(index) {
+        try {
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.weekday_short)) {
+                return translations_uk.weekday_short[index];
+            }
+            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.weekday_short)) {
+                return translations_en.weekday_short[index];
+            }
+        } catch (e) { /* ignore */ }
+        const tmp = new Date(2020,5,index+1);
+        return tmp.toLocaleDateString(undefined, { weekday: 'short' });
+    }
+
+    function renderMoodMonthLabel() {
+        const lbl = document.getElementById('moodMonthLabel');
+        if (!lbl) return;
+        lbl.textContent = getTranslatedMonthName_stat(moodMonth, moodYear);
+    }
+
+    function changeMoodMonth(delta) {
+        moodMonth += delta;
+        if (moodMonth < 0) { moodMonth = 11; moodYear -= 1; }
+        if (moodMonth > 11) { moodMonth = 0; moodYear += 1; }
+        renderMoodMonthLabel();
+        renderMoodCalendar(moodData, moodYear, moodMonth);
+    }
+
+    // Функція для створення календаря з відображенням настрою для заданого місяця
+    function renderMoodCalendar(moodData, year, month) {
+        const calendar = document.getElementById('moodCalendar');
+        if (!calendar) return;
+        calendar.innerHTML = '';
+
+            // weekday headers (Mon..Sun) - use translations when available
+            for (let i = 0; i < 7; i++) {
+                const hdr = document.createElement('div'); hdr.className = 'calendar-header'; hdr.textContent = getTranslatedWeekdayShort_stat(i);
+                calendar.appendChild(hdr);
+            }
+
+        // Build date->mood map from moodData
+        const dateMood = {};
+        if (Array.isArray(moodData.dates) && Array.isArray(moodData.values)) {
+            for (let i = 0; i < Math.min(moodData.dates.length, moodData.values.length); i++) {
+                const d = moodData.dates[i];
+                const v = moodData.values[i];
+                let moodKey = 'neutral';
+                if (v > 0.66) moodKey = 'happy';
+                else if (v > 0.33) moodKey = 'neutral';
+                else moodKey = 'sad';
+                dateMood[d] = moodKey;
+            }
+        }
+
+        const firstOfMonth = new Date(year, month, 1);
+        const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Mon=0..Sun=6
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // blank cells before first day
+        for (let i = 0; i < firstWeekday; i++) calendar.appendChild(Object.assign(document.createElement('div'), { className: 'calendar-day empty' }));
+
+        // fill days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dayCell = document.createElement('div'); dayCell.className = 'calendar-day';
+            const dateNum = document.createElement('div'); dateNum.className = 'date'; dateNum.textContent = d;
+            const indicator = document.createElement('div'); indicator.className = 'progress-indicator';
+
+            const moodForDay = dateMood[dateStr];
+            if (moodForDay) {
+                dayCell.classList.add('mood-' + moodForDay);
+                indicator.setAttribute('title', moodForDay === 'happy' ? 'Щасливий' : (moodForDay === 'neutral' ? 'Нейтральний' : 'Сумний'));
+            } else {
+                indicator.setAttribute('title', 'Немає даних');
+            }
+
+            dayCell.appendChild(dateNum);
+            dayCell.appendChild(indicator);
+            calendar.appendChild(dayCell);
+        }
+    }
+
+    // Initialize charts and calendar (safe even if moodData is empty)
+    createTrendChart(moodData);
+    createDistributionChart(moodData);
+    // wire month buttons
+    document.addEventListener('DOMContentLoaded', () => {
+        const prev = document.getElementById('moodPrevMonth');
+        const next = document.getElementById('moodNextMonth');
+        if (prev) prev.addEventListener('click', () => changeMoodMonth(-1));
+        if (next) next.addEventListener('click', () => changeMoodMonth(1));
+        renderMoodMonthLabel();
+        renderMoodCalendar(moodData, moodYear, moodMonth);
+    });
+
+    // Re-render month label and calendar when language changes
+    window.addEventListener('languageChanged', () => {
+        try { renderMoodMonthLabel(); } catch (e) {}
+        try { renderMoodCalendar(moodData, moodYear, moodMonth); } catch (e) {}
+    });
+
+    // Fallback: if backend didn't provide a daily quote, use client-side translations/quotes
+    (function ensureDailyQuote() {
+        const dqEl = document.getElementById('dailyQuoteText');
+        const daEl = document.getElementById('dailyQuoteAuthor');
+        if (!dqEl) return;
+        const hasText = dqEl.textContent && dqEl.textContent.trim().length > 0;
+        if (hasText) return;
+
+        // First check if user has a locally saved daily quote (from favorites)
+        try {
+            const localDaily = localStorage.getItem('dailyMoodDailyQuote');
+            const localDailyDate = localStorage.getItem('dailyMoodDailyQuoteDate');
+            const today = new Date().toISOString().slice(0,10);
+
+            // If stored and date is today, use it
+            if (localDaily && localDailyDate === today) {
+                dqEl.textContent = localDaily;
+                if (daEl) daEl.textContent = '';
+                return;
+            }
+
+            // If stored but date is older, rotate: pick a random favorite if present, otherwise fallthrough
+            if (localDaily && localDailyDate && localDailyDate < today) {
+                const favsRaw = (() => { try { return JSON.parse(localStorage.getItem('dailyMoodFavorites') || '[]'); } catch(e){ return []; }})();
+                const favs = Array.isArray(favsRaw) ? favsRaw.map(it => (typeof it === 'string' ? { text: it, favorite: false } : (it && typeof it === 'object' ? { text: String(it.text || ''), favorite: !!it.favorite } : null))).filter(Boolean) : [];
+                if (favs && favs.length) {
+                    const pickObj = favs[Math.floor(Math.random() * favs.length)];
+                    const pick = pickObj && pickObj.text ? pickObj.text : String(pickObj || '');
+                    localStorage.setItem('dailyMoodDailyQuote', pick);
+                    localStorage.setItem('dailyMoodDailyQuoteDate', today);
+                    dqEl.textContent = pick;
+                    if (daEl) daEl.textContent = '';
+                    return;
+                }
+                // no favorites to pick from; fall through to translations/random
+            }
+        } catch (e) { /* ignore localStorage access errors */ }
+
+        // Use localized quotes array (from static/translations/quotes.js) if available
+        const quotesArr = (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') ? (window.translations_quotes_uk || []) : (window.translations_quotes_en || []);
+        if (quotesArr && quotesArr.length) {
+            dqEl.textContent = quotesArr[Math.floor(Math.random() * quotesArr.length)];
+            if (daEl) daEl.textContent = '';
+        } else {
+            dqEl.textContent = (typeof translations_en !== 'undefined' && translations_en.quote_of_day) ? translations_en.quote_of_day : '—';
+            if (daEl) daEl.textContent = '';
+        }
+    })();
+
+    // Diagnostic: log key initialization states for quick debugging in browser console
+    try {
+        console.info('DailyMood:init - moodData sizes', {dates: moodData.dates.length, values: moodData.values.length, moods: moodData.moods.length, counts: moodData.counts.length});
+        console.info('DailyMood:init - Chart.js available?', typeof Chart !== 'undefined');
+        console.info('DailyMood:init - dailyQuoteText present?', !!document.getElementById('dailyQuoteText'));
+    } catch (e) { console.warn('DailyMood:init diagnostic failed', e); }
+
+    // Update quotes/favorites counts from localStorage
+    function updateQuoteCounts() {
+        try {
+            const raw = JSON.parse(localStorage.getItem('dailyMoodFavorites') || '[]');
+            const items = Array.isArray(raw) ? raw.map(it => (typeof it === 'string' ? { text: it, favorite: false } : (it && typeof it === 'object' ? { text: String(it.text || ''), favorite: !!it.favorite } : null))).filter(Boolean) : [];
+            const savedCountEl = document.getElementById('quotesSavedCount');
+            const favCountEl = document.getElementById('favoriteQuotesCount');
+            const savedCount = items.length;
+            const favCount = items.filter(i => !!i.favorite).length;
+            if (savedCountEl) savedCountEl.textContent = savedCount;
+            if (favCountEl) favCountEl.textContent = favCount;
+        } catch(e) { /* ignore */ }
+    }
+
+    window.addEventListener('favoritesUpdated', updateQuoteCounts);
+    // run once on init
+    updateQuoteCounts();
+</script>
+{% endblock %}

@@ -93,3 +93,55 @@
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 })();
+
+/* NAV UNDERLINE: moves the #nav-underline element to active / hovered nav items */
+(function(){
+  function moveUnderlineTo(el, underline){
+    if (!el || !underline) return;
+    const rect = el.getBoundingClientRect();
+    const navRect = el.closest('.site-nav').getBoundingClientRect();
+    // center point of the element relative to nav
+    const centerX = rect.left - navRect.left + rect.width / 2;
+    // target width is a fraction of element width but clamped
+    const targetWidth = Math.max(28, Math.min(rect.width * 0.7, 160));
+    // set styles
+    underline.style.width = targetWidth + 'px';
+    underline.style.left = centerX + 'px';
+    // keep translateX for true centering
+    underline.style.transform = 'translateX(-50%)';
+  }
+
+  function initUnderline(){
+    const underline = document.getElementById('nav-underline');
+    if (!underline) return;
+    const nav = document.querySelectorAll('.site-nav .nav-item');
+    // on load, find .nav-active
+    const active = document.querySelector('.site-nav .nav-item.nav-active') || nav[0];
+    moveUnderlineTo(active, underline);
+
+    // hover behavior
+    nav.forEach(item => {
+      item.addEventListener('mouseenter', function(){ moveUnderlineTo(item, underline); });
+      item.addEventListener('mouseleave', function(){
+        const activeNow = document.querySelector('.site-nav .nav-item.nav-active') || nav[0];
+        moveUnderlineTo(activeNow, underline);
+      });
+      // click: move underline and ensure active class updates visually
+      item.addEventListener('click', function(){
+        nav.forEach(n => n.classList.remove('nav-active'));
+        item.classList.add('nav-active');
+        moveUnderlineTo(item, underline);
+      });
+    });
+
+    // responsive: recalc on resize
+    window.addEventListener('resize', function(){
+      const activeNow = document.querySelector('.site-nav .nav-item.nav-active') || nav[0];
+      moveUnderlineTo(activeNow, underline);
+    });
+  }
+
+  // init once DOM is ready
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUnderline);
+  else initUnderline();
+})();

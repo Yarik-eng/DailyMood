@@ -1,134 +1,156 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Favorites — DailyMood</title>
+{% extends "base.html" %}
 
-    <script>
-      (function(){
-        try { var saved = localStorage.getItem('dailyMoodTheme'); } catch(e) { var saved = null; }
-        if (!saved) { var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; saved = prefersDark ? 'dark' : 'light'; }
-        if (saved === 'dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
-      })();
-    </script>
-    <script>window.tailwind = window.tailwind || {}; tailwind.config = tailwind.config || {}; tailwind.config.darkMode = 'class';</script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/static/style.css">
-  </head>
-  <body class="min-h-screen bg-gradient-to-b from-indigo-50 to-white text-gray-800 dark:bg-gray-900 dark:text-gray-100">
-    <div class="container">
-      <header class="site-header">
-        <div class="brand-wrap">
-          <a id="app-brand" href="/" class="brand">DailyMood</a>
-          <div class="subtitle">Daily quotes & tiny boosts</div>
-        </div>
+{% block title %}DailyMood — Favorites{% endblock %}
 
-        <nav class="site-nav" aria-label="Main navigation">
-          <a href="/" class="nav-item">Home</a>
-          <a href="/about" class="nav-item">About</a>
-          <a href="/favorites" class="nav-item nav-active">Favorites</a>
-          <span class="nav-spacer" aria-hidden="true"></span>
-        </nav>
-
-        <div class="header-controls">
-          <label id="theme-toggle-center" style="display:inline-block;cursor:pointer;" title="Toggle dark mode">
-            <input type="checkbox" id="toggle" aria-label="Toggle dark mode" style="opacity:0;position:absolute;width:56px;height:28px;">
-            <svg aria-hidden="true" viewBox="0 0 80 40" width="56" height="28" role="img">
-              <g id="container">
-                <rect id="patches" x="0" y="0" width="80" height="40" rx="20" fill="#dbeafe"></rect>
-                <g id="stars" transform="translate(6,7)">
-                  <circle cx="6" cy="6" r="1.4" fill="#fff"></circle>
-                  <circle cx="16" cy="10" r="1" fill="#fff"></circle>
-                </g>
-                <g id="cloud" transform="translate(4,11)" opacity="1">
-                  <path d="M10 12h28a8 8 0 0 0 0-16 10 10 0 0 0-20 0 6 6 0 0 0-8 8z" fill="#fff"></path>
-                </g>
-                <g id="sun" transform="translate(8,8)" opacity="1">
-                  <circle cx="28" cy="12" r="6" fill="#f59e0b"></circle>
-                </g>
-                <g id="moon" transform="translate(8,8)" opacity="0">
-                  <path d="M32 12a8 8 0 1 1-7-11 7 7 0 0 0 7 11z" fill="#fff"></path>
-                </g>
-                <g id="button" transform="translate(2,6)">
-                  <rect x="2" y="2.333" width="24" height="18" rx="9" fill="#fff"></rect>
-                </g>
-              </g>
-            </svg>
-          </label>
-        </div>
-      </header>
-
-      <main class="max-w-5xl mx-auto px-6 py-16">
+{% block content %}
+<div class="max-w-5xl mx-auto px-6 py-16">
   <section class="theme-panel card p-8">
-          <h1 class="text-3xl font-extrabold text-gray-900 mb-4 dark:text-gray-100">Saved quotes</h1>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">Your saved quotes are stored locally in your browser. Remove items you no longer want or copy them to clipboard.</p>
+    <h1 class="text-3xl font-extrabold text-gray-900 mb-4 dark:text-gray-100" data-i18n="favorites_title">Обрані цитати</h1>
+    <p class="text-gray-600 dark:text-gray-300 mb-6" data-i18n="favorites_description">
+      Ваші збережені цитати зберігаються локально у вашому браузері. Видаліть ті, які вам більше не потрібні, або скопіюйте їх до буфера обміну.
+    </p>
 
-          <div id="favoritesList" class="space-y-4">
-            <!-- favorites will be injected here by JS -->
-          </div>
-
-          <div class="panel-actions" style="margin-top:18px;">
-            <button id="clearFavorites" class="btn secondary">Clear all</button>
-            <a href="/" class="btn">Back home</a>
-          </div>
-        </section>
-      </main>
-
-      <footer style="padding:14px 22px;border-top:1px solid rgba(0,0,0,0.04);background:transparent;text-align:center;color:var(--muted);font-size:0.9rem;">Made with calm in mind — DailyMood</footer>
+    <div id="favoritesList" class="space-y-4">
+      <!-- favorites will be injected here by JS -->
     </div>
 
-    <script>
-      // LocalStorage-based favorites UI
-      (function(){
-        const storageKey = 'dailyMoodFavorites';
-        const listEl = document.getElementById('favoritesList');
-        const clearBtn = document.getElementById('clearFavorites');
+    <div class="panel-actions" style="margin-top:18px;">
+      <button id="clearFavorites" class="btn secondary" data-i18n="clear_all">Очистити все</button>
+      <a href="/" class="btn" data-i18n="nav_home">На головну</a>
+    </div>
+  </section>
+</div>
+{% endblock %}
 
-        function loadFavorites(){
-          try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e) { return []; }
+{% block extra_scripts %}
+<script>
+  // LocalStorage-based favorites UI
+  (function(){
+    const storageKey = 'dailyMoodFavorites';
+    const listEl = document.getElementById('favoritesList');
+    const clearBtn = document.getElementById('clearFavorites');
+
+    function loadFavorites(){
+      try {
+        const raw = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        // Normalize old-format string entries to objects { text, favorite }
+        if (!Array.isArray(raw)) return [];
+        return raw.map(item => {
+          if (typeof item === 'string') return { text: item, favorite: false };
+          if (item && typeof item === 'object' && 'text' in item) return { text: String(item.text), favorite: !!item.favorite };
+          return null;
+        }).filter(Boolean);
+      } catch(e) { return []; }
+    }
+
+    function saveFavorites(arr){
+      try { localStorage.setItem(storageKey, JSON.stringify(arr)); } catch(e){}
+    }
+
+    function getI18nText(key) {
+      return currentLanguage === 'uk' ? translations_uk[key] : translations_en[key];
+    }
+
+    function render(){
+      const items = loadFavorites();
+      listEl.innerHTML = '';
+      if (items.length === 0) {
+        listEl.innerHTML = `<div class="muted">${getI18nText('no_favorites')}</div>`;
+        return;
+      }
+      items.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = 'card fav-item';
+
+        const favClass = item.favorite ? 'favorited' : '';
+        // Use data-i18n attributes for dynamic content
+        const heartChar = item.favorite ? '♥' : '♡';
+        card.innerHTML = `
+          <div class="fav-row">
+            <div class="fav-text">
+              <div class="fav-quote">${escapeHtml(item.text)}</div>
+            </div>
+            <div class="fav-actions">
+              <button class="heart-btn ${favClass}" aria-pressed="${item.favorite}" data-fav-index="${i}" title="${getI18nText('toggle_favorite') || 'Toggle favorite'}">${heartChar}</button>
+              <button class="btn" data-copy-index="${i}" data-i18n="copy_quote">Копіювати</button>
+              <button class="btn secondary" data-remove-index="${i}" data-i18n="delete">Видалити</button>
+            </div>
+          </div>
+        `;
+
+        listEl.appendChild(card);
+      });
+
+      // Re-apply translations after rendering
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        const translation = currentLanguage === 'uk' ? translations_uk[key] : translations_en[key];
+        if (translation) {
+          element.textContent = translation;
         }
+      });
+    }
 
-        function saveFavorites(arr){ try { localStorage.setItem(storageKey, JSON.stringify(arr)); } catch(e){} }
+    function escapeHtml(str){ 
+      return String(str).replace(/[&<>\"]/g, function(c){ 
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; 
+      }); 
+    }
 
-        function render(){
-          const items = loadFavorites();
-          listEl.innerHTML = '';
-          if (items.length === 0) {
-            listEl.innerHTML = '<div class="muted">You have no saved quotes yet. Go back to Home and save some!</div>';
-            return;
-          }
-          items.forEach((text, i) => {
-            const card = document.createElement('div');
-            // use fav-item to override layout specifics for list entries
-            card.className = 'card fav-item';
-
-            // build inner structure with clear class names so CSS can control layout
-            card.innerHTML = '\n              <div class="fav-row">\n                <div class="fav-text">\n                  <div class="fav-quote">' + escapeHtml(text) + '</div>\n                </div>\n                <div class="fav-actions">\n                  <button class="btn" data-copy-index="' + i + '">Copy</button>\n                  <button class="btn secondary" data-remove-index="' + i + '">Remove</button>\n                </div>\n              </div>\n            ';
-
-            listEl.appendChild(card);
-          });
-        }
-
-        function escapeHtml(str){ return String(str).replace(/[&<>\"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-
-        // Delegated handlers
-        listEl.addEventListener('click', function(e){
-          const copyIndex = e.target.getAttribute('data-copy-index');
-          if (copyIndex !== null) {
-            const items = loadFavorites(); navigator.clipboard.writeText(items[copyIndex]).then(()=>{ e.target.textContent = 'Copied!'; setTimeout(()=> e.target.textContent = 'Copy', 900); }).catch(()=>{});
-            return;
-          }
-          const removeIndex = e.target.getAttribute('data-remove-index');
-          if (removeIndex !== null){ const items = loadFavorites(); items.splice(removeIndex,1); saveFavorites(items); render(); return; }
-        });
-
-        clearBtn.addEventListener('click', function(){ if (!confirm('Clear all saved quotes?')) return; saveFavorites([]); render(); });
-
+    // Delegated handlers
+    listEl.addEventListener('click', function(e){
+      const copyIndex = e.target.getAttribute('data-copy-index');
+      if (copyIndex !== null) {
+        const items = loadFavorites();
+        navigator.clipboard.writeText(items[copyIndex])
+          .then(()=>{ 
+            const originalText = e.target.textContent;
+            e.target.textContent = getI18nText('copied'); 
+            setTimeout(()=> e.target.textContent = originalText, 900); 
+          })
+          .catch(()=>{});
+        return;
+      }
+      const favIndex = e.target.getAttribute('data-fav-index');
+      if (favIndex !== null) {
+        const items = loadFavorites();
+        const idx = parseInt(favIndex, 10);
+        if (!items[idx]) return;
+        // Toggle favorite flag only (do not delete the saved quote). Use remove button to delete.
+        items[idx].favorite = !items[idx].favorite;
+        saveFavorites(items);
         render();
-      })();
-    </script>
+        try { window.dispatchEvent(new Event('favoritesUpdated')); } catch(e){}
+        return;
+      }
+      const removeIndex = e.target.getAttribute('data-remove-index');
+      if (removeIndex !== null){ 
+        const items = loadFavorites(); 
+        const idx = parseInt(removeIndex, 10);
+        const btnEl = e.target;
+        const cardEl = btnEl.closest('.fav-item');
+        if (cardEl) cardEl.classList.add('fav-removing');
+        setTimeout(() => {
+          items.splice(idx,1); 
+          saveFavorites(items); 
+          render(); 
+          try { window.dispatchEvent(new Event('favoritesUpdated')); } catch(e){}
+        }, 260);
+        return; 
+      }
+    });
 
-    <script src="/static/script.js"></script>
-  </body>
-</html>
+    clearBtn.addEventListener('click', function(){ 
+      if (!confirm(getI18nText('confirm_clear_all'))) return; 
+      saveFavorites([]); 
+      render(); 
+      try { window.dispatchEvent(new Event('favoritesUpdated')); } catch(e){}
+    });
+
+    // Listen for language changes
+    window.addEventListener('languageChanged', render);
+
+    render();
+  })();
+</script>
+{% endblock %}

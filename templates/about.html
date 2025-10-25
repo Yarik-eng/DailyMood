@@ -1,96 +1,57 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>About — DailyMood</title>
+{% extends "base.html" %}
 
-    <!-- Inline theme init: apply stored or system theme ASAP to avoid FOUC -->
-    <script>
-      (function(){
-        try {
-          var saved = localStorage.getItem('dailyMoodTheme');
-        } catch (e) {
-          var saved = null;
-        }
-        if (!saved) {
-          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          saved = prefersDark ? 'dark' : 'light';
-        }
-        if (saved === 'dark') document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
-      })();
-    </script>
+{% block title %}Про нас — DailyMood{% endblock %}
 
-    <!-- Tailwind class-based dark mode -->
-    <script>
-      window.tailwind = window.tailwind || {};
-      tailwind.config = tailwind.config || {};
-      tailwind.config.darkMode = 'class';
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+{% block content %}
+<div class="max-w-5xl mx-auto px-6 py-16">
+  <section class="theme-panel card p-8">
+    <h1 class="text-3xl font-extrabold text-gray-900 mb-4 dark:text-gray-100" data-i18n="about_title">Про нас</h1>
+    <p class="text-gray-700 mb-6 dark:text-gray-300" data-i18n="about_description">DailyMood — простий інструмент для відстеження настрою й звичок. Ми допомагаємо помічати закономірності та підтримувати щоденну рефлексію за допомогою зручного інтерфейсу та ненав'язливих нагадувань.</p>
 
-    <link rel="stylesheet" href="/static/style.css">
-  </head>
+    <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4 dark:text-gray-100">Наша місія</h2>
+    <p class="text-gray-600 mb-4 dark:text-gray-300">Сприяти психологічній стійкості через щоденні дрібні кроки: від запису настрою до формування корисних звичок. Ми віримо, що усвідомлене ставлення до свого емоційного стану — це шлях до кращого розуміння себе та гармонійного життя.</p>
 
-    <body class="min-h-screen bg-gradient-to-b from-indigo-50 to-white text-gray-800 dark:bg-gray-900 dark:text-gray-100">
-      <div class="container">
-      <header class="site-header">
-        <div class="brand-wrap">
-          <a id="app-brand" href="/" class="brand">DailyMood</a>
-          <div class="subtitle">Daily quotes & tiny boosts</div>
-        </div>
-
-        <nav class="site-nav" aria-label="Main navigation">
-          <a href="/" class="nav-item">Home</a>
-          <a href="/about" class="nav-item nav-active">About</a>
-          <a href="/favorites" class="nav-item">Favorites</a>
-          <span class="nav-spacer" aria-hidden="true"></span>
-        </nav>
-
-        <div class="header-controls">
-          <label id="theme-toggle-center" style="display:inline-block;cursor:pointer;" title="Toggle dark mode">
-            <input type="checkbox" id="toggle" aria-label="Toggle dark mode" style="opacity:0;position:absolute;width:56px;height:28px;">
-            <svg aria-hidden="true" viewBox="0 0 80 40" width="56" height="28" role="img">
-              <g id="container">
-                <rect id="patches" x="0" y="0" width="80" height="40" rx="20" fill="#dbeafe"></rect>
-                <g id="stars" transform="translate(6,7)">
-                  <circle cx="6" cy="6" r="1.4" fill="#fff"></circle>
-                  <circle cx="16" cy="10" r="1" fill="#fff"></circle>
-                </g>
-                <g id="cloud" transform="translate(4,11)" opacity="1">
-                  <path d="M10 12h28a8 8 0 0 0 0-16 10 10 0 0 0-20 0 6 6 0 0 0-8 8z" fill="#fff"></path>
-                </g>
-                <g id="sun" transform="translate(8,8)" opacity="1">
-                  <circle cx="28" cy="12" r="6" fill="#f59e0b"></circle>
-                </g>
-                <g id="moon" transform="translate(8,8)" opacity="0">
-                  <path d="M32 12a8 8 0 1 1-7-11 7 7 0 0 0 7 11z" fill="#fff"></path>
-                </g>
-                <g id="button" transform="translate(2,6)">
-                  <rect x="2" y="2.333" width="24" height="18" rx="9" fill="#fff"></rect>
-                </g>
-              </g>
-            </svg>
-          </label>
-        </div>
-      </header>
-
-    <main class="max-w-5xl mx-auto px-6 py-16">
-      <!-- Give the about panel the `theme-panel card` classes so it inherits the themed card background & aurora protection -->
-      <section class="theme-panel card p-8">
-        <h1 class="text-3xl font-extrabold text-gray-900 mb-4 dark:text-gray-100">About DailyMood</h1>
-        <p class="text-gray-700 mb-4 dark:text-gray-300">DailyMood is a small project aimed at helping people log and reflect on their daily emotional states. We focus on a simple interface and gentle insights to encourage reflection.</p>
-
-        <h2 class="text-xl font-semibold text-gray-900 mt-6 dark:text-gray-100">The Team</h2>
-        <p class="text-gray-600 dark:text-gray-300">A tiny, passionate group: designers, developers, and mental health advocates. We're dedicated to building tools that support everyday wellbeing.</p>
-
-        <h3 class="mt-6 font-medium dark:text-gray-100">Get in touch</h3>
-        <p class="text-gray-600 dark:text-gray-300">This is a demo project. For questions or contributions, add a note in the repository or reach out to the maintainers.</p>
-      </section>
-    </main>
-
-    <script src="/static/script.js"></script>
+    <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4 dark:text-gray-100">Основні можливості</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white/5 p-5 rounded-lg">
+        <h3 class="font-semibold mb-2 dark:text-gray-100">Відстеження настрою</h3>
+        <p class="text-gray-600 dark:text-gray-300">Зручний щоденник для запису вашого емоційного стану, активностей та думок. Візуалізація змін настрою допомагає краще розуміти себе.</p>
+      </div>
+      <div class="bg-white/5 p-5 rounded-lg">
+        <h3 class="font-semibold mb-2 dark:text-gray-100">Статистика та аналіз</h3>
+        <p class="text-gray-600 dark:text-gray-300">Детальні графіки та звіти допомагають відслідковувати тенденції вашого настрою та знаходити фактори, які впливають на ваше самопочуття.</p>
+      </div>
+      <div class="bg-white/5 p-5 rounded-lg">
+        <h3 class="font-semibold mb-2 dark:text-gray-100">Щоденні цитати</h3>
+        <p class="text-gray-600 dark:text-gray-300">Колекція надихаючих цитат, які допомагають знайти мотивацію та підтримку. Можливість зберігати улюблені цитати у власній колекції.</p>
+      </div>
+      <div class="bg-white/5 p-5 rounded-lg">
+        <h3 class="font-semibold mb-2 dark:text-gray-100">Відстеження звичок</h3>
+        <p class="text-gray-600 dark:text-gray-300">Інструменти для формування та підтримки корисних звичок. Відмічайте свій прогрес та отримуйте візуальне підтвердження своїх досягнень.</p>
+      </div>
     </div>
-  </body>
-</html>
+
+    <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4 dark:text-gray-100">Особливості проєкту</h2>
+    <ul class="list-disc list-inside space-y-3 text-gray-600 dark:text-gray-300 mb-8">
+      <li>Зручний та інтуїтивно зрозумілий інтерфейс</li>
+      <li>Підтримка світлої та темної тем оформлення</li>
+      <li>Захист приватності — ваші дані зберігаються локально</li>
+      <li>Немає нав'язливої реклами чи прихованих платежів</li>
+      <li>Постійне оновлення та покращення функціоналу</li>
+    </ul>
+
+    <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4 dark:text-gray-100">Плани розвитку</h2>
+    <p class="text-gray-600 mb-4 dark:text-gray-300">Ми постійно працюємо над вдосконаленням DailyMood. У майбутньому плануємо додати:</p>
+    <ul class="list-disc list-inside space-y-3 text-gray-600 dark:text-gray-300 mb-8">
+      <li>Розширену аналітику настрою та звичок</li>
+      <li>Можливість експорту даних у різні формати</li>
+      <li>Інтеграцію з календарем</li>
+      <li>Нові категорії активностей та метрик</li>
+    </ul>
+
+    <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4 dark:text-gray-100">Контакти та зворотний зв'язок</h2>
+    <p class="text-gray-600 mb-2 dark:text-gray-300">Проєкт розробляється як освітній/демонстраційний — для зворотного зв'язку або внесків див. репозиторій на GitHub.</p>
+    <p class="text-gray-600 dark:text-gray-300">Ми завжди раді отримати ваші пропозиції щодо покращення проєкту чи нових функцій. Якщо у вас є ідеї або ви знайшли помилку, будь ласка, створіть issue в нашому репозиторії.</p>
+  </section>
+</div>
+{% endblock %}

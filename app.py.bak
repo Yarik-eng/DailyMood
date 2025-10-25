@@ -1,0 +1,862 @@
+from flask import Flask, render_template, request, jsonifyfrom flask import Flask, render_template, request, jsonifyfrom flask import Flask, render_template, request, jsonify
+
+import os
+
+import loggingimport osimport os
+
+from datetime import datetime, timedelta
+
+from sqlalchemy import funcimport loggingimport logging
+
+
+
+from models import db, MoodEntryfrom datetime import datetime, timedeltafrom datetime import datetime, timedelta
+
+
+
+# Налаштування логуванняfrom sqlalchemy import funcfrom sqlalchemy import func
+
+logging.basicConfig(
+
+    level=logging.DEBUG,
+
+    format='%(asctime)s [%(levelname)s] %(message)s',
+
+    handlers=[from models import db, MoodEntryfrom models import db, MoodEntry
+
+        logging.FileHandler('app.log'),
+
+        logging.StreamHandler()
+
+    ]
+
+)# Налаштування логування# Налаштування логування
+
+
+
+app = Flask(__name__)logging.basicConfig(logging.basicConfig(
+
+
+
+# Database configuration: use SQLite file in the data/ folder    level=logging.DEBUG,    level=logging.DEBUG,
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+db_path = os.path.join(basedir, 'data', 'dailymood.db')    format='%(asctime)s [%(levelname)s] %(message)s',    format='%(asctime)s [%(levelname)s] %(message)s',
+
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'    handlers=[    handlers=[
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+        logging.FileHandler('app.log'),        logging.FileHandler('app.log'),
+
+# Initialize DB
+
+db.init_app(app)        logging.StreamHandler()        logging.StreamHandler()
+
+
+
+def test_db_connection():    ]    ]
+
+    """Test database connection."""
+
+    try:))
+
+        with app.app_context():
+
+            db.engine.connect()
+
+            logging.info("Database connection successful")
+
+            return Trueapp = Flask(__name__)app = Flask(__name__)
+
+    except Exception as e:
+
+        logging.error(f"Database connection failed: {str(e)}")
+
+        return False
+
+# Database configuration: use SQLite file in the data/ folder# Database configuration: use SQLite file in the data/ folder
+
+def create_tables():
+
+    """Create database tables if they don't exist."""basedir = os.path.abspath(os.path.dirname(__file__))basedir = os.path.abspath(os.path.dirname(__file__))
+
+    try:
+
+        with app.app_context():db_path = os.path.join(basedir, 'data', 'dailymood.db')db_path = os.path.join(basedir, 'data', 'dailymood.db')
+
+            db.create_all()
+
+            logging.info("Database tables created successfully")os.makedirs(os.path.dirname(db_path), exist_ok=True)os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    except Exception as e:
+
+        logging.error(f"Error creating database tables: {str(e)}")app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+        raise
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Falseapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Ensure tables exist when the module is imported/run for development.
+
+create_tables()
+
+
+
+@app.errorhandler(404)# Initialize DB# Initialize DB
+
+def not_found_error(error):
+
+    logging.warning(f"404 error: {request.url}")db.init_app(app)db.init_app(app)
+
+    return jsonify({
+
+        'status': 'error',
+
+        'message': 'Requested resource not found'
+
+    }), 404def test_db_connection():def test_db_connection():
+
+
+
+@app.errorhandler(500)    """Test database connection."""    """Test database connection."""
+
+def internal_error(error):
+
+    logging.error(f"500 error: {str(error)}")    try:    try:
+
+    db.session.rollback()
+
+    return jsonify({        with app.app_context():        with app.app_context():
+
+        'status': 'error',
+
+        'message': 'Internal server error occurred'            db.engine.connect()            db.engine.connect()
+
+    }), 500
+
+            logging.info("Database connection successful")            logging.info("Database connection successful")
+
+@app.before_request
+
+def before_request():            return True            return True
+
+    """Log each request."""
+
+    logging.info(f"Request: {request.method} {request.url}")    except Exception as e:    except Exception as e:
+
+
+
+@app.route('/')        logging.error(f"Database connection failed: {str(e)}")        logging.error(f"Database connection failed: {str(e)}")
+
+def index():
+
+    return render_template('index.html')        return False        return False
+
+
+
+@app.route('/about')
+
+def about():
+
+    return render_template('about.html')def create_tables():def create_tables():
+
+
+
+@app.route('/favorites')    """Create database tables if they don't exist."""    """Create database tables if they don't exist."""
+
+def favorites():
+
+    return render_template('favorites.html')    try:    try:
+
+
+
+@app.route('/journal')        with app.app_context():        with app.app_context():
+
+def journal():
+
+    """Сторінка щоденника."""            db.create_all()            db.create_all()
+
+    return render_template('journal.html')
+
+            logging.info("Database tables created successfully")            logging.info("Database tables created successfully")
+
+@app.route('/goals')
+
+def goals():    except Exception as e:    except Exception as e:
+
+    """Сторінка цілей."""
+
+    return render_template('goals.html')        logging.error(f"Error creating database tables: {str(e)}")        logging.error(f"Error creating database tables: {str(e)}")
+
+
+
+@app.route('/statistics')        raise        raise
+
+def statistics():
+
+    """Сторінка статистики."""
+
+    # Отримуємо дані за останній місяць
+
+    month_ago = datetime.utcnow() - timedelta(days=30)# Ensure tables exist when the module is imported/run for development.# Ensure tables exist when the module is imported/run for development.
+
+    
+
+    # Кількість записів за місяцьcreate_tables()create_tables()
+
+    monthly_entries = MoodEntry.query.filter(
+
+        MoodEntry.date >= month_ago
+
+    ).count()
+
+    @app.errorhandler(404)@app.errorhandler(404)
+
+    # Найчастіший настрій
+
+    most_common = db.session.query(def not_found_error(error):def not_found_error(error):
+
+        MoodEntry.mood,
+
+        func.count(MoodEntry.mood).label('count')    logging.warning(f"404 error: {request.url}")    logging.warning(f"404 error: {request.url}")
+
+    ).group_by(MoodEntry.mood).order_by(
+
+        func.count(MoodEntry.mood).desc()    return jsonify({    return jsonify({
+
+    ).first()
+
+    most_common_mood = most_common.mood if most_common else 'Немає даних'        'status': 'error',        'status': 'error',
+
+    
+
+    # Дані для графіків        'message': 'Requested resource not found'        'message': 'Requested resource not found'
+
+    entries = MoodEntry.query.filter(
+
+        MoodEntry.date >= month_ago    }), 404    }), 404
+
+    ).order_by(MoodEntry.date).all()
+
+    
+
+    mood_data = {
+
+        'dates': [e.date.strftime('%Y-%m-%d') for e in entries],@app.errorhandler(500)@app.errorhandler(500)
+
+        'values': [1 if e.mood == 'happy' else 0.5 if e.mood == 'neutral' else 0 for e in entries],
+
+        'moods': ['Щасливий', 'Нейтральний', 'Сумний'],def internal_error(error):def internal_error(error):
+
+        'counts': [
+
+            sum(1 for e in entries if e.mood == 'happy'),    logging.error(f"500 error: {str(error)}")    logging.error(f"500 error: {str(error)}")
+
+            sum(1 for e in entries if e.mood == 'neutral'),
+
+            sum(1 for e in entries if e.mood == 'sad')    db.session.rollback()    db.session.rollback()
+
+        ]
+
+    }    return jsonify({    return jsonify({
+
+    
+
+    return render_template('statistics.html',        'status': 'error',        'status': 'error',
+
+                         monthly_entries=monthly_entries,
+
+                         most_common_mood=most_common_mood,        'message': 'Internal server error occurred'        'message': 'Internal server error occurred'
+
+                         mood_data=mood_data)
+
+    }), 500    }), 500
+
+@app.route('/api/journal', methods=['GET'])
+
+def list_entries():
+
+    """Return a list of journal entries as JSON."""
+
+    try:@app.before_request@app.before_request
+
+        month = request.args.get('month')
+
+        mood = request.args.get('mood')def before_request():def before_request():
+
+        
+
+        query = MoodEntry.query    """Log each request."""    """Log each request."""
+
+        
+
+        if month:    logging.info(f"Request: {request.method} {request.url}")    logging.info(f"Request: {request.method} {request.url}")
+
+            year, month = map(int, month.split('-'))
+
+            query = query.filter(
+
+                db.extract('year', MoodEntry.date) == year,
+
+                db.extract('month', MoodEntry.date) == month@app.route('/')@app.route('/')
+
+            )
+
+            def index():def index():
+
+        if mood:
+
+            query = query.filter(MoodEntry.mood == mood)    return render_template('index.html')    return render_template('index.html')
+
+            
+
+        entries = query.order_by(MoodEntry.date.desc()).all()
+
+        
+
+        return jsonify([e.to_dict() for e in entries]), 200@app.route('/about')@app.route('/about')
+
+        
+
+    except Exception as e:def about():def about():
+
+        logging.error(f"Error listing entries: {str(e)}")
+
+        return jsonify({    return render_template('about.html')    return render_template('about.html')
+
+            'status': 'error',
+
+            'message': f'Помилка при отриманні записів: {str(e)}'
+
+        }), 500
+
+@app.route('/favorites')@app.route('/favorites')
+
+@app.route('/api/journal', methods=['POST'])
+
+def add_entry():def favorites():def favorites():
+
+    """Add a journal entry."""
+
+    try:    return render_template('favorites.html')    return render_template('favorites.html')
+
+        data = request.get_json()
+
+        
+
+        if not all(k in data for k in ['mood', 'date', 'title']):
+
+            return jsonify({@app.route('/journal')@app.route('/journal')
+
+                'status': 'error',
+
+                'message': 'Необхідні поля: mood, date, title'def journal():def journal():
+
+            }), 400
+
+    """Сторінка щоденника."""    """Сторінка щоденника."""
+
+        try:
+
+            # Convert ISO date string to Python date    return render_template('journal.html')    return render_template('journal.html')
+
+            date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+
+            
+
+            # Convert activities list to comma-separated string
+
+            activities = ','.join(data['activities']) if data.get('activities') else None@app.route('/goals')@app.route('/goals')
+
+            
+
+            entry = MoodEntry(def goals():def goals():
+
+                mood=data['mood'],
+
+                date=date,    """Сторінка цілей."""    """Сторінка цілей."""
+
+                title=data['title'],
+
+                content=data.get('content'),    return render_template('goals.html')    return render_template('goals.html')
+
+                activities=activities
+
+            )
+
+            
+
+            db.session.add(entry)@app.route('/statistics')@app.route('/statistics')
+
+            db.session.commit()
+
+def statistics():def statistics():
+
+            return jsonify({
+
+                'status': 'success',    """Сторінка статистики."""    """Сторінка статистики."""
+
+                'message': 'Запис успішно збережено',
+
+                'data': entry.to_dict()    # Отримуємо дані за останній місяць    # Отримуємо дані за останній місяць
+
+            }), 201
+
+                month_ago = datetime.utcnow() - timedelta(days=30)    month_ago = datetime.utcnow() - timedelta(days=30)
+
+        except ValueError as ve:
+
+            return jsonify({        
+
+                'status': 'error',
+
+                'message': str(ve)    # Кількість записів за місяць    # Кількість записів за місяць
+
+            }), 400
+
+                monthly_entries = MoodEntry.query.filter(    monthly_entries = MoodEntry.query.filter(
+
+    except Exception as e:
+
+        db.session.rollback()        MoodEntry.date >= month_ago        MoodEntry.date >= month_ago
+
+        logging.error(f"Error adding entry: {str(e)}")
+
+        return jsonify({    ).count()    ).count()
+
+            'status': 'error',
+
+            'message': f'Помилка при збереженні: {str(e)}'        
+
+        }), 500
+
+    # Найчастіший настрій    # Найчастіший настрій
+
+@app.route('/api/journal/<int:entry_id>', methods=['PUT'])
+
+def update_entry(entry_id):    most_common = db.session.query(    most_common = db.session.query(
+
+    """Update an existing journal entry."""
+
+    try:        MoodEntry.mood,        MoodEntry.mood,
+
+        entry = MoodEntry.query.get_or_404(entry_id)
+
+        data = request.get_json() if request.is_json else request.form        func.count(MoodEntry.mood).label('count')        func.count(MoodEntry.mood).label('count')
+
+        
+
+        # Оновлюємо настрій якщо він наданий і валідний    ).group_by(MoodEntry.mood).order_by(    ).group_by(MoodEntry.mood).order_by(
+
+        if 'mood' in data:
+
+            if data['mood'] not in MoodEntry.VALID_MOODS:        func.count(MoodEntry.mood).desc()        func.count(MoodEntry.mood).desc()
+
+                return jsonify({
+
+                    'status': 'error',    ).first()    ).first()
+
+                    'message': f'Недійсне значення настрою. Допустимі значення: {", ".join(MoodEntry.VALID_MOODS)}'
+
+                }), 400    most_common_mood = most_common.mood if most_common else 'Немає даних'    most_common_mood = most_common.mood if most_common else 'Немає даних'
+
+            entry.mood = data['mood']
+
+                    
+
+        # Оновлюємо інші поля якщо вони надані
+
+        if 'title' in data:    # Дані для графіків    # Дані для графіків
+
+            entry.title = data['title'].strip()
+
+                entries = MoodEntry.query.filter(    entries = MoodEntry.query.filter(
+
+        if 'content' in data:
+
+            entry.content = data['content'].strip()        MoodEntry.date >= month_ago        MoodEntry.date >= month_ago
+
+            
+
+        if 'activities' in data:    ).order_by(MoodEntry.date).all()    ).order_by(MoodEntry.date).all()
+
+            entry.activities = ','.join(data['activities']) if data['activities'] else None
+
+                    
+
+        db.session.commit()
+
+            mood_data = {    mood_data = {
+
+        return jsonify({
+
+            'status': 'success',        'dates': [e.date.strftime('%Y-%m-%d') for e in entries],        'dates': [e.date.strftime('%Y-%m-%d') for e in entries],
+
+            'message': 'Запис успішно оновлено',
+
+            'data': entry.to_dict()        'values': [1 if e.mood == 'happy' else 0.5 if e.mood == 'neutral' else 0 for e in entries],        'values': [1 if e.mood == 'happy' else 0.5 if e.mood == 'neutral' else 0 for e in entries],
+
+        }), 200
+
+                'moods': ['Щасливий', 'Нейтральний', 'Сумний'],        'moods': ['Щасливий', 'Нейтральний', 'Сумний'],
+
+    except Exception as e:
+
+        db.session.rollback()        'counts': [        'counts': [
+
+        return jsonify({
+
+            'status': 'error',            sum(1 for e in entries if e.mood == 'happy'),            sum(1 for e in entries if e.mood == 'happy'),
+
+            'message': f'Помилка при оновленні: {str(e)}'
+
+        }), 500            sum(1 for e in entries if e.mood == 'neutral'),            sum(1 for e in entries if e.mood == 'neutral'),
+
+
+
+@app.route('/api/journal/<int:entry_id>', methods=['DELETE'])            sum(1 for e in entries if e.mood == 'sad')            sum(1 for e in entries if e.mood == 'sad')
+
+def delete_entry(entry_id):
+
+    """Delete a journal entry."""        ]        ]
+
+    try:
+
+        entry = MoodEntry.query.get_or_404(entry_id)    }    }
+
+        db.session.delete(entry)
+
+        db.session.commit()        
+
+        
+
+        return jsonify({    return render_template('statistics.html',    return render_template('statistics.html',
+
+            'status': 'success',
+
+            'message': 'Запис успішно видалено'                         monthly_entries=monthly_entries,                         monthly_entries=monthly_entries,
+
+        }), 200
+
+                                 most_common_mood=most_common_mood,                         most_common_mood=most_common_mood,
+
+    except Exception as e:
+
+        db.session.rollback()                         mood_data=mood_data)                         mood_data=mood_data)
+
+        return jsonify({
+
+            'status': 'error',
+
+            'message': f'Помилка при видаленні: {str(e)}'
+
+        }), 500@app.route('/api/journal', methods=['GET'])@app.route('/api/journal', methods=['GET'])
+
+
+
+if __name__ == '__main__':def list_entries():def list_entries():
+
+    # Check database connection before starting the server
+
+    if test_db_connection():    """Return a list of journal entries as JSON."""    """Return a list of journal entries as JSON."""
+
+        logging.info("Starting Flask application")
+
+        app.run(debug=True)    try:    try:
+
+    else:
+
+        logging.error("Could not start application due to database connection failure")        month = request.args.get('month')        month = request.args.get('month')
+
+        exit(1)
+        mood = request.args.get('mood')        mood = request.args.get('mood')
+
+                
+
+        query = MoodEntry.query        query = MoodEntry.query
+
+                
+
+        if month:        if month:
+
+            year, month = map(int, month.split('-'))            year, month = map(int, month.split('-'))
+
+            query = query.filter(            query = query.filter(
+
+                db.extract('year', MoodEntry.date) == year,                db.extract('year', MoodEntry.date) == year,
+
+                db.extract('month', MoodEntry.date) == month                db.extract('month', MoodEntry.date) == month
+
+            )            )
+
+                        
+
+        if mood:        if mood:
+
+            query = query.filter(MoodEntry.mood == mood)            query = query.filter(MoodEntry.mood == mood)
+
+                        
+
+        entries = query.order_by(MoodEntry.date.desc()).all()        entries = query.order_by(MoodEntry.date.desc()).all()
+
+                
+
+        return jsonify([e.to_dict() for e in entries]), 200        return jsonify([e.to_dict() for e in entries]), 200
+
+                
+
+    except Exception as e:    except Exception as e:
+
+        logging.error(f"Error listing entries: {str(e)}")        logging.error(f"Error listing entries: {str(e)}")
+
+        return jsonify({        return jsonify({
+
+            'status': 'error',            'status': 'error',
+
+            'message': f'Помилка при отриманні записів: {str(e)}'            'message': f'Помилка при отриманні записів: {str(e)}'
+
+        }), 500        }), 500
+
+
+
+@app.route('/api/journal', methods=['POST'])@app.route('/api/journal', methods=['POST'])
+
+def add_entry():def add_entry():
+
+    """Add a journal entry."""    """Add a journal entry."""
+
+    try:    try:
+
+        data = request.get_json()        data = request.get_json()
+
+                
+
+        if not all(k in data for k in ['mood', 'date', 'title']):        if not all(k in data for k in ['mood', 'date', 'title']):
+
+            return jsonify({            return jsonify({
+
+                'status': 'error',                'status': 'error',
+
+                'message': 'Необхідні поля: mood, date, title'                'message': 'Необхідні поля: mood, date, title'
+
+            }), 400            }), 400
+
+
+
+        try:        try:
+
+            # Convert ISO date string to Python date            # Convert ISO date string to Python date
+
+            date = datetime.strptime(data['date'], '%Y-%m-%d').date()            date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+
+                        
+
+            # Convert activities list to comma-separated string            # Convert activities list to comma-separated string
+
+            activities = ','.join(data['activities']) if data.get('activities') else None            activities = ','.join(data['activities']) if data.get('activities') else None
+
+                        
+
+            entry = MoodEntry(            entry = MoodEntry(
+
+                mood=data['mood'],                mood=data['mood'],
+
+                date=date,                date=date,
+
+                title=data['title'],                title=data['title'],
+
+                content=data.get('content'),                content=data.get('content'),
+
+                activities=activities                activities=activities
+
+            )            )
+
+                        
+
+            db.session.add(entry)            db.session.add(entry)
+
+            db.session.commit()            db.session.commit()
+
+
+
+            return jsonify({            return jsonify({
+
+                'status': 'success',                'status': 'success',
+
+                'message': 'Запис успішно збережено',                'message': 'Запис успішно збережено',
+
+                'data': entry.to_dict()                'data': entry.to_dict()
+
+            }), 201            }), 201
+
+                        
+
+        except ValueError as ve:        except ValueError as ve:
+
+            return jsonify({            return jsonify({
+
+                'status': 'error',                'status': 'error',
+
+                'message': str(ve)                'message': str(ve)
+
+            }), 400            }), 400
+
+                        
+
+    except Exception as e:    except Exception as e:
+
+        db.session.rollback()        db.session.rollback()
+
+        logging.error(f"Error adding entry: {str(e)}")        logging.error(f"Error adding entry: {str(e)}")
+
+        return jsonify({        return jsonify({
+
+            'status': 'error',            'status': 'error',
+
+            'message': f'Помилка при збереженні: {str(e)}'            'message': f'Помилка при збереженні: {str(e)}'
+
+        }), 500        }), 500
+
+
+
+@app.route('/api/journal/<int:entry_id>', methods=['PUT'])@app.route('/api/journal/<int:entry_id>', methods=['PUT'])
+
+def update_entry(entry_id):def update_entry(entry_id):
+
+    """Update an existing journal entry."""    """Update an existing journal entry."""
+
+    try:    try:
+
+        entry = MoodEntry.query.get_or_404(entry_id)        entry = MoodEntry.query.get_or_404(entry_id)
+
+        data = request.get_json() if request.is_json else request.form        data = request.get_json() if request.is_json else request.form
+
+                
+
+        # Оновлюємо настрій якщо він наданий і валідний        # Оновлюємо настрій якщо він наданий і валідний
+
+        if 'mood' in data:        if 'mood' in data:
+
+            if data['mood'] not in MoodEntry.VALID_MOODS:            if data['mood'] not in MoodEntry.VALID_MOODS:
+
+                return jsonify({                return jsonify({
+
+                    'status': 'error',                    'status': 'error',
+
+                    'message': f'Недійсне значення настрою. Допустимі значення: {", ".join(MoodEntry.VALID_MOODS)}'                    'message': f'Недійсне значення настрою. Допустимі значення: {", ".join(MoodEntry.VALID_MOODS)}'
+
+                }), 400                }), 400
+
+            entry.mood = data['mood']            entry.mood = data['mood']
+
+                        
+
+        # Оновлюємо інші поля якщо вони надані        # Оновлюємо інші поля якщо вони надані
+
+        if 'title' in data:        if 'title' in data:
+
+            entry.title = data['title'].strip()            entry.title = data['title'].strip()
+
+                        
+
+        if 'content' in data:        if 'content' in data:
+
+            entry.content = data['content'].strip()            entry.content = data['content'].strip()
+
+                        
+
+        if 'activities' in data:        if 'activities' in data:
+
+            entry.activities = ','.join(data['activities']) if data['activities'] else None            entry.activities = ','.join(data['activities']) if data['activities'] else None
+
+                        
+
+        db.session.commit()        db.session.commit()
+
+                
+
+        return jsonify({        return jsonify({
+
+            'status': 'success',            'status': 'success',
+
+            'message': 'Запис успішно оновлено',            'message': 'Запис успішно оновлено',
+
+            'data': entry.to_dict()            'data': entry.to_dict()
+
+        }), 200        }), 200
+
+                
+
+    except Exception as e:    except Exception as e:
+
+        db.session.rollback()        db.session.rollback()
+
+        return jsonify({        return jsonify({
+
+            'status': 'error',            'status': 'error',
+
+            'message': f'Помилка при оновленні: {str(e)}'            'message': f'Помилка при оновленні: {str(e)}'
+
+        }), 500        }), 500
+
+
+
+@app.route('/api/journal/<int:entry_id>', methods=['DELETE'])@app.route('/api/journal/<int:entry_id>', methods=['DELETE'])
+
+def delete_entry(entry_id):def delete_entry(entry_id):
+
+    """Delete a journal entry."""    """Delete a journal entry."""
+
+    try:    try:
+
+        entry = MoodEntry.query.get_or_404(entry_id)        entry = MoodEntry.query.get_or_404(entry_id)
+
+        db.session.delete(entry)        db.session.delete(entry)
+
+        db.session.commit()        db.session.commit()
+
+                
+
+        return jsonify({        return jsonify({
+
+            'status': 'success',            'status': 'success',
+
+            'message': 'Запис успішно видалено'            'message': 'Запис успішно видалено'
+
+        }), 200        }), 200
+
+                
+
+    except Exception as e:    except Exception as e:
+
+        db.session.rollback()        db.session.rollback()
+
+        return jsonify({        return jsonify({
+
+            'status': 'error',            'status': 'error',
+
+            'message': f'Помилка при видаленні: {str(e)}'            'message': f'Помилка при видаленні: {str(e)}'
+
+        }), 500        }), 500
+
+
+
+if __name__ == '__main__':if __name__ == '__main__':
+
+    # Check database connection before starting the server    # Check database connection before starting the server
+
+    if test_db_connection():    if test_db_connection():
+
+        logging.info("Starting Flask application")        logging.info("Starting Flask application")
+
+        app.run(debug=True)        app.run(debug=True)
+
+    else:    else:
+
+        logging.error("Could not start application due to database connection failure")        logging.error("Could not start application due to database connection failure")
+
+        exit(1)        exit(1)

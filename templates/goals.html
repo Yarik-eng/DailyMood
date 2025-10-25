@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+
+{% block title %}Цілі та прогрес - DailyMood{% endblock %}
+
+{% block content %}
+
+    <main class="goals-container">
+        <div class="page-banner">
+            <h1 data-i18n="goals_page_title">Мої цілі та звички</h1>
+        </div>
+
+        <section class="goals-grid">
+            <div class="goals-column card theme-panel">
+                <h2 data-i18n="habits_title">Щоденні звички</h2>
+                <div class="habits-list" id="habitsList">
+                    <!-- Habits will be loaded by JavaScript -->
+                </div>
+                
+                <form id="newHabitForm" class="add-form">
+                    <input type="text" id="newHabit" placeholder="Нова звичка..." data-i18n="new_habit_placeholder" required>
+                    <select id="habitType">
+                        <option value="morning">🌅 Ранкова</option>
+                        <option value="evening">🌙 Вечірня</option>
+                        <option value="anytime">⭐ Будь-коли</option>
+                    </select>
+                    <button type="submit" data-i18n="add">Додати</button>
+                </form>
+            </div>
+
+            <div class="goals-column card theme-panel">
+                <h2 data-i18n="monthly_goals_title">Цілі на місяць</h2>
+                <div class="goals-list" id="monthlyGoals">
+                    <!-- Monthly goals will be loaded by JavaScript -->
+                </div>
+                
+                <form id="newMonthlyGoal" class="add-form">
+                    <input type="text" id="newGoal" placeholder="Нова ціль..." data-i18n="new_goal_placeholder" required>
+                    <input type="date" id="goalDeadline" required>
+                    <button type="submit" data-i18n="add">Додати</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="progress-section">
+            <h2 data-i18n="my_progress">Мій прогрес</h2>
+            
+            <div class="progress-calendar">
+                <!-- Calendar will show habit completion for the selected month -->
+                <div class="calendar-header" style="display:flex;align-items:center;gap:12px;">
+                    <button id="progressPrevMonth" class="small-btn">◀</button>
+                    <div id="progressMonthLabel" style="font-weight:700;min-width:180px;text-align:center;"></div>
+                    <button id="progressNextMonth" class="small-btn">▶</button>
+                </div>
+                <div class="calendar-body" id="progressCalendar">
+                    <!-- Progress cells will be added by JavaScript -->
+                </div>
+            </div>
+
+            <div class="achievements">
+                <h3>Досягнення</h3>
+                <div class="achievements-grid">
+                    <div class="achievement">
+                        <span class="achievement-icon">🌟</span>
+                        <h4>7 днів поспіль</h4>
+                        <p>Виконували всі звички</p>
+                    </div>
+                    <div class="achievement">
+                        <span class="achievement-icon">📈</span>
+                        <h4>Покращення настрою</h4>
+                        <p>На 20% кращий настрій</p>
+                    </div>
+                    <div class="achievement">
+                        <span class="achievement-icon">🎯</span>
+                        <h4>Ціль досягнута</h4>
+                        <p>3 цілі виконано</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Full lists rendered lower on the page so new items appear below -->
+        <section class="lists-lower" style="width:100%;margin-top:28px;">
+            <div class="lists-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div class="card theme-panel" id="habitsBottomContainer">
+                    <h2 data-i18n="all_habits">All habits</h2>
+                    <div id="habitsBottomList" class="habits-full-list" style="margin-top:12px;"></div>
+                </div>
+                <div class="card theme-panel" id="goalsBottomContainer">
+                    <h2 data-i18n="all_goals">All goals</h2>
+                    <div id="goalsBottomList" class="goals-full-list" style="margin-top:12px;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Simple i18n helper for this page
+    function getI18nText(key) {
+        return (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') ? (translations_uk[key] || '') : (translations_en[key] || '');
+    }
+
+    // Try to obtain translated month and weekday names from translation bundles.
+    function getTranslatedMonthName(month, year) {
+        try {
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.month_names)) {
+                return translations_uk.month_names[month] + ' ' + year;
+            }
+            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.month_names)) {
+                return translations_en.month_names[month] + ' ' + year;
+            }
+        } catch (e) { /* ignore */ }
+        const d = new Date(year, month, 1);
+        return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    function getTranslatedWeekdayShort(index) {
+        try {
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.weekday_short)) {
+                return translations_uk.weekday_short[index];
+            }
+            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.weekday_short)) {
+                return translations_en.weekday_short[index];
+            }
+        } catch (e) { /* ignore */ }
+        // fallback to locale short weekday
+        const tmp = new Date(2020,5,index+1);
+        return tmp.toLocaleDateString(undefined, { weekday: 'short' });
+    }
+
+    // State for which month is shown in progress calendar
+    let progressYear = (new Date()).getFullYear();
+    let progressMonth = (new Date()).getMonth(); // 0-based
+
+    // Load habits and goals when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        loadHabits();
+        loadMonthlyGoals();
+        // wire month navigation
+        document.getElementById('progressPrevMonth').addEventListener('click', () => { changeProgressMonth(-1); });
+        document.getElementById('progressNextMonth').addEventListener('click', () => { changeProgressMonth(1); });
+        renderProgressMonthLabel();
+    });
+
+    // Re-render dynamic content when language changes
+    window.addEventListener('languageChanged', (e) => {
+        // reload texts and dynamic blocks
+        try { loadHabits(); } catch (err) { /* ignore */ }
+        try { loadMonthlyGoals(); } catch (err) { /* ignore */ }
+        try { renderProgressMonthLabel(); } catch (err) { /* ignore */ }
+    });
+
+    // Handle new habit form submission
+    document.getElementById('newHabitForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const habit = {
+            name: document.getElementById('newHabit').value,
+            type: document.getElementById('habitType').value
+        };
+
+        try {
+            const response = await fetch('/api/habits', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(habit)
+            });
+
+            if (response.ok) {
+                e.target.reset();
+                await loadHabits();
+                // scroll to bottom habits list so the newly added habit is visible
+                try { document.getElementById('habitsBottomContainer').scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){}
+            } else {
+                console.error('Failed to create habit', await response.text());
+            }
+        } catch (error) {
+            console.error('Error adding habit:', error);
+        }
+    });
+
+    // Handle new monthly goal submission
+    document.getElementById('newMonthlyGoal').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const goal = {
+            name: document.getElementById('newGoal').value,
+            deadline: document.getElementById('goalDeadline').value
+        };
+
+        try {
+            const res = await fetch('/api/goals', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(goal)
+            });
+            if (res.ok) {
+                e.target.reset();
+                await loadMonthlyGoals();
+                try { document.getElementById('goalsBottomContainer').scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){}
+            } else {
+                console.error('Failed to create goal', await res.text());
+            }
+        } catch (err) {
+            console.error('Error creating goal:', err);
+        }
+    });
+
+    // Load and display habits
+    async function loadHabits() {
+        try {
+            const response = await fetch('/api/habits');
+            if (!response.ok) throw new Error('Failed to load habits');
+            const habits = await response.json();
+
+            // Top card: show a compact count summary so the input area stays clean
+            const habitsList = document.getElementById('habitsList');
+            habitsList.innerHTML = `<div class="muted">${habits.length} ${habits.length === 1 ? (getI18nText('habit_singular')||'habit') : (getI18nText('habit_plural')||'habits')}</div>`;
+
+            // Bottom: full list where new items appear
+            const bottom = document.getElementById('habitsBottomList');
+            bottom.innerHTML = habits.map(habit => `
+                <div class="habit-item" data-habit-id="${habit.id}">
+                    <label class="habit-checkbox">
+                        <input type="checkbox" ${habit.completed ? 'checked' : ''} onchange="toggleHabit(${habit.id})">
+                        <span class="checkmark"></span>
+                    </label>
+                    <span class="habit-name">${getHabitEmoji(habit.type)} ${habit.name}</span>
+                    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                        <small style="opacity:0.7;margin-right:6px;">${habit.created_at ? habit.created_at.slice(0,10) : ''}</small>
+                        <button onclick="deleteHabit(${habit.id})" class="delete-btn">×</button>
+                    </div>
+                </div>
+            `).join('');
+
+            await updateProgressCalendar(habits, progressYear, progressMonth);
+        } catch (error) {
+            console.error('Error loading habits:', error);
+        }
+    }
+
+    // Load and display monthly goals
+    async function loadMonthlyGoals() {
+        try {
+            const res = await fetch('/api/goals');
+            if (!res.ok) throw new Error('Failed to load goals');
+            const goals = await res.json();
+
+            // Top summary
+            const container = document.getElementById('monthlyGoals');
+            container.innerHTML = `<div class="muted">${goals.length} ${goals.length === 1 ? (getI18nText('goal_singular')||'goal') : (getI18nText('goal_plural')||'goals')}</div>`;
+
+            // Bottom full list
+            const bottom = document.getElementById('goalsBottomList');
+            bottom.innerHTML = goals.map(g => `
+                <div class="goal-item" data-goal-id="${g.id}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:8px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:700;">${g.name}</div>
+                        <div style="font-size:0.9rem;opacity:0.7;">${g.deadline}</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button onclick="toggleGoal(${g.id})" class="goal-toggle">${g.completed ? '↺' : '✓'}</button>
+                        <button onclick="deleteGoal(${g.id})" class="delete-btn">×</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Update achievements area using habits and goals
+            try {
+                const habitsRes = await fetch('/api/habits');
+                const habits = habitsRes.ok ? await habitsRes.json() : [];
+                renderAchievements(habits, goals);
+            } catch (e) {
+                console.error('Error fetching habits for achievements', e);
+            }
+
+        } catch (error) {
+            console.error('Error loading goals:', error);
+        }
+    }
+
+    async function toggleGoal(goalId) {
+        try {
+            const res = await fetch(`/api/goals/${goalId}/toggle`, {method: 'POST'});
+            if (res.ok) loadMonthlyGoals();
+        } catch (e) { console.error('Error toggling goal', e); }
+    }
+
+    async function deleteGoal(goalId) {
+        if (!confirm('Видалити цю ціль?')) return;
+        try {
+            const res = await fetch(`/api/goals/${goalId}`, {method: 'DELETE'});
+            if (res.ok) loadMonthlyGoals();
+        } catch (e) { console.error('Error deleting goal', e); }
+    }
+
+    function getHabitEmoji(type) {
+        const emojis = { morning: '🌅', evening: '🌙', anytime: '⭐' };
+        return emojis[type] || '📝';
+    }
+
+    // Update progress calendar based on habits data for a particular month/year
+    async function updateProgressCalendar(habits, year, month) {
+        const calendar = document.getElementById('progressCalendar');
+        if (!calendar) return;
+
+        const totalHabits = Array.isArray(habits) ? habits.length : 0;
+
+        // Fetch goals so we can show goal deadlines on the calendar too
+        let goals = [];
+        try {
+            const r = await fetch('/api/goals');
+            if (r.ok) goals = await r.json();
+        } catch (e) { /* ignore */ }
+
+        const hasGoals = Array.isArray(goals) && goals.length > 0;
+
+        // If there are no habits AND no goals, show a friendly placeholder and exit early
+        if (totalHabits === 0 && !hasGoals) {
+            calendar.innerHTML = `<div class="muted" style="padding:14px; text-align:center;" data-i18n="no_habits_calendar">No habits yet — add one to start tracking</div>`;
+            // apply translations immediately if i18n is loaded
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                const translation = currentLanguage === 'uk' ? translations_uk[key] : translations_en[key];
+                if (translation) element.textContent = translation;
+            });
+            return;
+        }
+
+        // Determine first day and number of days in month
+        const firstOfMonth = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Build header with weekday names (use translation bundle when available)
+        const cells = [];
+        const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Mon=0..Sun=6
+        // ensure the calendar grid uses 7 columns so header alignment matches days
+        try { calendar.style.display = 'grid'; calendar.style.gridTemplateColumns = 'repeat(7, 1fr)'; } catch(e) {}
+        for (let i = 0; i < 7; i++) {
+            cells.push(`<div class="calendar-header">${getTranslatedWeekdayShort(i)}</div>`);
+        }
+
+        for (let i = 0; i < firstWeekday; i++) {
+            cells.push(`<div class="calendar-day empty"></div>`);
+        }
+
+        // Build a map date -> completed count for the month
+        const counts = {};
+        for (let d = 1; d <= daysInMonth; d++) counts[`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`] = 0;
+
+        (habits || []).forEach(h => {
+            (h.completions || []).forEach(dateStr => {
+                if (dateStr in counts) counts[dateStr] += 1;
+            });
+        });
+
+        // Map goals deadlines to dates in the month
+        const goalsByDate = {};
+        (goals || []).forEach(g => {
+            if (!g.deadline) return;
+            const ds = g.deadline.slice(0,10);
+            if (ds in counts) {
+                goalsByDate[ds] = goalsByDate[ds] || [];
+                goalsByDate[ds].push(g);
+            }
+        });
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const completedCount = counts[dateStr] || 0;
+            const cls = totalHabits > 0 && completedCount === totalHabits ? 'completed' : (completedCount > 0 ? 'partial' : '');
+            const goalHtml = (goalsByDate[dateStr] || []).map(g => `<span class="goal-marker" title="${g.name}">🎯</span>`).join('');
+            cells.push(`
+                <div class="calendar-day" title="${dateStr}: ${completedCount}/${totalHabits}">
+                    <div class="date">${d}</div>
+                    <div class="progress-indicator ${cls}"></div>
+                    <div class="goal-markers">${goalHtml}</div>
+                </div>`);
+        }
+
+        calendar.innerHTML = cells.join('');
+    }
+
+    function renderProgressMonthLabel() {
+        const label = document.getElementById('progressMonthLabel');
+        if (!label) return;
+        label.textContent = getTranslatedMonthName(progressMonth, progressYear);
+    }
+
+    function changeProgressMonth(delta) {
+        progressMonth += delta;
+        if (progressMonth < 0) { progressMonth = 11; progressYear -= 1; }
+        if (progressMonth > 11) { progressMonth = 0; progressYear += 1; }
+        renderProgressMonthLabel();
+        // reload habits (which will re-render calendar)
+        loadHabits();
+    }
+
+    function renderAchievements(habits, goals) {
+        const grid = document.querySelector('.achievements-grid');
+        const today = new Date();
+        const days = Array.from({length:30}, (_,i)=>{
+            const d = new Date(); d.setDate(today.getDate()-i); return d.toISOString().slice(0,10);
+        }).reverse();
+
+        const totalHabits = habits.length;
+        // compute full-days (all habits completed)
+        const fullDays = days.filter(dateStr => {
+            const completedForDate = habits.reduce((sum,h)=> sum + ((h.completions||[]).includes(dateStr) ? 1 : 0), 0);
+            return totalHabits>0 && completedForDate === totalHabits;
+        }).length;
+
+        // longest streak of full days
+        let longest = 0, current = 0;
+        for (const d of days) {
+            const done = habits.reduce((sum,h)=> sum + ((h.completions||[]).includes(d) ? 1 : 0), 0) === totalHabits && totalHabits>0;
+            if (done) { current += 1; longest = Math.max(longest, current); } else { current = 0; }
+        }
+
+        const achievedGoals = (goals || []).filter(g => g.completed).length;
+
+        grid.innerHTML = `
+            <div class="achievement">
+                <span class="achievement-icon">🌟</span>
+                <h4>${longest} ${getI18nText('ach_days_suffix') || 'days'}</h4>
+                <p>${getI18nText('ach_longest_desc') || 'Longest series of full days'}</p>
+            </div>
+            <div class="achievement">
+                <span class="achievement-icon">📈</span>
+                <h4>${fullDays} ${getI18nText('ach_days_with_habits') || 'days with all habits'}</h4>
+                <p>${getI18nText('ach_full_days_desc') || 'Full days in last 30 days'}</p>
+            </div>
+            <div class="achievement">
+                <span class="achievement-icon">🎯</span>
+                <h4>${achievedGoals} ${getI18nText('ach_goals_done') || 'goals completed'}</h4>
+                <p>${getI18nText('ach_completed_goals_desc') || 'Monthly goals'}</p>
+            </div>
+        `;
+    }
+
+    // Handle habit toggle
+    async function toggleHabit(habitId) {
+        try {
+            const res = await fetch(`/api/habits/${habitId}/toggle`, {method: 'POST'});
+            if (res.ok) await loadHabits();
+        } catch (error) {
+            console.error('Error toggling habit:', error);
+        }
+    }
+
+    // Handle habit deletion
+    async function deleteHabit(habitId) {
+        if (!confirm('Видалити цю звичку?')) return;
+        try {
+            const res = await fetch(`/api/habits/${habitId}`, {method: 'DELETE'});
+            if (res.ok) await loadHabits();
+        } catch (error) {
+            console.error('Error deleting habit:', error);
+        }
+    }
+</script>
+{% endblock %}

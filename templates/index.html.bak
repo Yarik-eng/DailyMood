@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}DailyMood — Home{% endblock %}
+
+{% block extra_head %}
+<!-- Inline theme init: apply stored or system theme ASAP to avoid FOUC -->
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('dailyMoodTheme');
+    } catch (e) {
+      var saved = null;
+    }
+    if (!saved) {
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      saved = prefersDark ? 'dark' : 'light';
+    }
+    if (saved === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  })();
+</script>
+{% endblock %}
+
+{% block content %}
+<main class="main" style="padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;">
+        <div id="quoteCard" class="card" aria-live="polite" aria-atomic="true">
+          <div id="quoteText" class="quote-inner"></div>
+        </div>
+
+        <div class="controls" style="display:flex;gap:12px;justify-content:center;margin-top:8px;flex-wrap:wrap;">
+          <button id="newQuote" class="btn" aria-label="Show a new quote">New Quote</button>
+          <button id="copyQuote" class="btn secondary" aria-label="Copy the quote">Copy</button>
+          <button id="saveQuote" class="btn secondary" aria-label="Save the quote">Save</button>
+        </div>
+
+        <div class="muted">Tip: Press <kbd>N</kbd> for a new quote. Theme persists between visits.</div>
+      </main>
+
+      <footer style="padding:14px 22px;border-top:1px solid rgba(0,0,0,0.04);background:transparent;text-align:center;color:var(--muted);font-size:0.9rem;">Made with calm in mind — DailyMood</footer>
+    </div>
+
+    <script>
+      /* Quotes app (keeps same behavior as before) */
+      (function () {
+        const QUOTES = [
+          "Small steps every day lead to big changes over time.",
+          "You are allowed to rest and recharge — it's part of the journey.",
+          "Progress, not perfection. Celebrate the little wins.",
+          "Your feelings are valid. Give them space and kindness.",
+          "A single positive thought can start a ripple of better days.",
+          "Take one deep breath. You're doing better than you think.",
+          "Growth often feels uncomfortable — that's how you know it's working.",
+          "Choose one thing today that sparks a tiny bit of joy.",
+          "Compare yourself to who you were yesterday, not to others.",
+          "Consistency beats intensity. Keep showing up, even in small ways.",
+          "This too shall pass — and you will be stronger for it.",
+          "Be curious about your feelings instead of judging them.",
+          "Small acts of kindness brighten both your day and someone else's.",
+          "You are allowed to ask for help. It’s a sign of strength.",
+          "The present moment is the only one you can change — start now.",
+          "Let go of what you can't control and invest energy in what you can.",
+          "Notice three good things today — train your mind toward positivity.",
+          "A kind inner voice is one of the most powerful tools you have.",
+          "Celebrate the effort, even if the outcome isn't perfect.",
+          "When overwhelmed, choose the next small action and do just that.",
+          "Breathe in calm, breathe out tension — five breaths is a reset.",
+          "A routine that supports you matters more than dramatic fixes.",
+          "You are more resilient than you think — one day at a time.",
+          "Tiny progress each day compounds into meaningful change.",
+          "Start where you are. Use what you have. Do what you can.",
+          "It's okay to take a break — rest is part of caring for yourself.",
+          "Name one small win from today, however small it seems.",
+          "Let curiosity lead when you feel stuck; ask one simple question.",
+          "Kindness toward yourself creates space to grow.",
+          "One mindful minute can return you to steady ground.",
+          "You don't have to know the whole path — just the next step.",
+          "Be present for one thing right now; let other worries wait.",
+          "Small rituals build comfort — pick one and repeat it tomorrow.",
+          "A gentle routine anchors the day more than bursts of productivity.",
+          "Listen to your body; it often knows what your mind has forgotten.",
+          "Give yourself credit for attempting — that's where courage starts.",
+          "Make space for one thing that genuinely makes you smile today.",
+          "It's okay to be exactly where you are; progress isn't always visible."
+        ];
+
+  const quoteText = document.getElementById('quoteText');
+  const newBtn = document.getElementById('newQuote');
+  const copyBtn = document.getElementById('copyQuote');
+  const saveBtn = document.getElementById('saveQuote');
+
+  let currentIndex = -1; let animating = false;
+
+  // Favorites (localStorage)
+  const FAVORITES_KEY = 'dailyMoodFavorites';
+  function loadFavorites(){ try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch(e){ return []; } }
+  function saveFavorites(arr){ try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(arr)); } catch(e){} }
+  function isCurrentSaved(){ const items = loadFavorites(); return items.includes(quoteText.textContent); }
+  function updateSaveButton(){ if (!saveBtn) return; saveBtn.textContent = isCurrentSaved() ? 'Saved' : 'Save'; }
+
+        function randomIndexExcluding(max, exclude) {
+          if (max <= 1) return 0; let idx = Math.floor(Math.random() * max);
+          if (idx === exclude) idx = (idx + 1) % max; return idx;
+        }
+
+        function setQuoteAnimated(text) {
+          if (animating) return; animating = true;
+          quoteText.classList.add('fade-exit'); quoteText.offsetHeight; quoteText.classList.add('fade-exit-active');
+          setTimeout(() => {
+            quoteText.classList.remove('fade-exit', 'fade-exit-active'); quoteText.textContent = text;
+            quoteText.classList.add('fade-enter'); quoteText.offsetHeight; quoteText.classList.add('fade-enter-active');
+            setTimeout(() => { quoteText.classList.remove('fade-enter', 'fade-enter-active'); animating = false; }, 380);
+          }, 260);
+        }
+
+        function showRandomQuote() { const idx = randomIndexExcluding(QUOTES.length, currentIndex); currentIndex = idx; setQuoteAnimated(QUOTES[idx]); }
+
+        async function copyQuote() { const text = quoteText.textContent; if (!text) return; try { await navigator.clipboard.writeText(text); const original = copyBtn.textContent; copyBtn.textContent = 'Copied!'; setTimeout(() => { copyBtn.textContent = original; }, 1200); } catch (e) { prompt('Copy this quote:', text); } }
+
+        function onKey(e) { if (e.key === 'n' || e.key === 'N') showRandomQuote(); }
+
+        newBtn.addEventListener('click', function(){ showRandomQuote(); setTimeout(updateSaveButton, 350); });
+        copyBtn.addEventListener('click', copyQuote);
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function(){
+            const text = quoteText.textContent; if (!text) return;
+            const items = loadFavorites();
+            const idx = items.indexOf(text);
+            if (idx === -1) { items.unshift(text); saveFavorites(items); saveBtn.textContent = 'Saved'; }
+            else { items.splice(idx,1); saveFavorites(items); saveBtn.textContent = 'Save'; }
+          });
+        }
+        window.addEventListener('keydown', onKey);
+
+        showRandomQuote();
+        // ensure save button reflects initial state
+        setTimeout(updateSaveButton, 300);
+      })();
+    </script>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>

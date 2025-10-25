@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Щоденник - DailyMood{% endblock %}
+
+{% block content %}
+
+    <main class="journal-container">
+        <h1>Мій щоденник настрою</h1>
+        
+    <section class="new-entry">
+            <h2>Новий запис</h2>
+            <form id="journalForm" class="journal-form">
+                <div class="form-group">
+                    <label for="mood">Настрій:</label>
+                    <select name="mood" id="mood" required>
+                        <option value="happy">😊 Щасливий</option>
+                        <option value="neutral">😐 Нейтральний</option>
+                        <option value="sad">😢 Сумний</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date">Дата:</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">Заголовок:</label>
+                    <input type="text" id="title" name="title" placeholder="Коротко про день" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Опис дня:</label>
+                    <textarea id="content" name="content" rows="5" 
+                              placeholder="Що сталося сьогодні? Що вплинуло на ваш настрій?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="activities">Активності:</label>
+                    <div class="activities-grid">
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="exercise">
+                            🏃‍♂️ Спорт
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="meditation">
+                            🧘‍♂️ Медитація
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="reading">
+                            📚 Читання
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="social">
+                            👥 Спілкування
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="nature">
+                            🌳 Природа
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="work">
+                            💼 Робота
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Зберегти запис</button>
+            </form>
+        </section>
+
+    <section class="entries-list">
+            <h2>Мої записи</h2>
+            <div class="entries-filter">
+                <input type="month" id="monthFilter">
+                <select id="moodFilter">
+                    <option value="">Всі настрої</option>
+                    <option value="happy">😊 Щасливий</option>
+                    <option value="neutral">😐 Нейтральний</option>
+                    <option value="sad">😢 Сумний</option>
+                </select>
+            </div>
+            
+            <div class="journal-entries" id="entriesList">
+                <!-- Записи будуть додані через JavaScript -->
+            </div>
+        </section>
+    </main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Встановлюємо сьогоднішню дату за замовчуванням
+    document.getElementById('date').valueAsDate = new Date();
+
+    // Обробка відправки форми
+    document.getElementById('journalForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const activities = Array.from(formData.getAll('activities'));
+        
+        const entry = {
+            mood: formData.get('mood'),
+            date: formData.get('date'),
+            title: formData.get('title'),
+            content: formData.get('content'),
+            activities: activities
+        };
+
+        try {
+            const response = await fetch('/api/journal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(entry)
+            });
+
+            if (response.ok) {
+                alert('Запис збережено!');
+                loadEntries(); // Оновлюємо список записів
+                e.target.reset();
+                document.getElementById('date').valueAsDate = new Date();
+            } else {
+                alert('Помилка при збереженні запису');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Помилка при збереженні запису');
+        }
+    });
+
+    // Завантаження та відображення записів
+    async function loadEntries() {
+        const monthFilter = document.getElementById('monthFilter').value;
+        const moodFilter = document.getElementById('moodFilter').value;
+        
+        try {
+            const response = await fetch(`/api/journal?month=${monthFilter}&mood=${moodFilter}`);
+            if (!response.ok) {
+                console.error('Failed to load entries', response.status);
+                return;
+            }
+            const entries = await response.json();
+
+            const entriesList = document.getElementById('entriesList');
+            entriesList.innerHTML = entries.map(entry => `
+                <article class="journal-entry mood-${entry.mood}" data-id="${entry.id}">
+                    <header>
+                        <div class="entry-header-left">
+                            <h3>${entry.title}</h3>
+                            <time datetime="${entry.date}">${new Date(entry.date).toLocaleDateString('uk-UA')}</time>
+                        </div>
+                        <div class="entry-header-right">
+                            <button class="btn-link delete-entry" data-id="${entry.id}" title="Видалити запис">Видалити</button>
+                        </div>
+                    </header>
+                    <p>${entry.content || ''}</p>
+                    ${(entry.activities && entry.activities.length) ? `
+                        <footer class="activities-list">
+                            ${entry.activities.map(activity => `
+                                <span class="activity-tag">${getActivityEmoji(activity)} ${activity}</span>
+                            `).join('')}
+                        </footer>
+                    ` : ''}
+                </article>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading entries:', error);
+        }
+    }
+
+    // Делегований обробник для кнопок видалення
+    document.getElementById('entriesList').addEventListener('click', async (e) => {
+        const btn = e.target.closest('.delete-entry');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!id) return;
+
+        if (!confirm('Ви справді хочете видалити цей запис? Цю дію не можна скасувати.')) return;
+
+        try {
+            const resp = await fetch(`/api/journal/${id}`, { method: 'DELETE' });
+            if (resp.ok) {
+                // Optional: animate removal — here we reload list for simplicity
+                loadEntries();
+            } else {
+                const data = await resp.json().catch(() => ({}));
+                alert(data.message || 'Не вдалося видалити запис');
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Помилка при видаленні запису');
+        }
+    });
+
+    function getActivityEmoji(activity) {
+        const emojis = {
+            exercise: '🏃‍♂️',
+            meditation: '🧘‍♂️',
+            reading: '📚',
+            social: '👥',
+            nature: '🌳',
+            work: '💼'
+        };
+        return emojis[activity] || '📝';
+    }
+
+    // Завантажуємо записи при завантаженні сторінки та при зміні фільтрів
+    loadEntries();
+    document.getElementById('monthFilter').addEventListener('change', loadEntries);
+    document.getElementById('moodFilter').addEventListener('change', loadEntries);
+</script>
+{% endblock %}
