@@ -2,6 +2,55 @@
 
 {% block title %}Admin — Products{% endblock %}
 
+{% block extra_head %}
+<style>
+  .admin-input, .admin-textarea, .admin-select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    font-size: 1rem;
+    transition: all 0.18s ease;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  .admin-input:focus, .admin-textarea:focus, .admin-select:focus {
+    outline: none;
+    border-color: rgba(99,102,241,0.6);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12), inset 0 2px 6px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+  
+  .admin-input::placeholder, .admin-textarea::placeholder {
+    color: rgba(255,255,255,0.4);
+  }
+  
+  html.dark .admin-input, html.dark .admin-textarea, html.dark .admin-select {
+    background: rgba(2,6,23,0.6);
+    border-color: rgba(79,172,254,0.15);
+    color: #e6eef8;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+  }
+  
+  html:not(.dark) .admin-input, html:not(.dark) .admin-textarea, html:not(.dark) .admin-select {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(2,6,23,0.12);
+    color: #0f172a;
+    box-shadow: inset 0 1px 2px rgba(2,6,23,0.1);
+  }
+  
+  html:not(.dark) .admin-input::placeholder, html:not(.dark) .admin-textarea::placeholder {
+    color: rgba(15,23,42,0.4);
+  }
+  
+  html:not(.dark) .admin-select option {
+    background: #ffffff;
+    color: #0f172a;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto px-6 py-10">
   <section class="theme-panel card p-6" style="text-align:left;">
@@ -18,17 +67,17 @@
       <h3 class="text-lg font-bold mb-3" id="formTitle" data-i18n="new_product">Новий продукт</h3>
       <form id="productForm" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <input type="hidden" id="editProductId">
-        <input type="text" id="prodName" placeholder="Назва" data-i18n="product_name" required>
-        <input type="text" id="prodSlug" placeholder="Slug (URL)" data-i18n="product_slug" required>
-        <select id="prodType" aria-label="Type" required>
+        <input type="text" id="prodName" class="admin-input" placeholder="Назва" data-i18n="product_name" required>
+        <input type="text" id="prodSlug" class="admin-input" placeholder="Slug (URL)" data-i18n="product_slug" required>
+        <select id="prodType" class="admin-select" aria-label="Type" required>
           <option value="" data-i18n="product_type_select">Виберіть тип</option>
           <option value="quote_pack" data-i18n="type_quote_pack">Пакет цитат</option>
           <option value="theme" data-i18n="type_theme">Тема оформлення</option>
           <option value="journal_template" data-i18n="type_journal_template">Шаблон щоденника</option>
           <option value="habit_course" data-i18n="type_habit_course">Курс звичок</option>
         </select>
-        <input type="number" id="prodPrice" placeholder="Ціна" data-i18n="product_price" step="0.01" min="0" required>
-        <textarea id="prodDesc" rows="3" placeholder="Опис" data-i18n="product_description" style="grid-column:1/-1"></textarea>
+        <input type="number" id="prodPrice" class="admin-input" placeholder="Ціна" data-i18n="product_price" step="0.01" min="0" required>
+        <textarea id="prodDesc" class="admin-textarea" rows="3" placeholder="Опис" data-i18n="product_description" style="grid-column:1/-1"></textarea>
         <label style="display:flex; align-items:center; gap:8px;">
           <input type="checkbox" id="prodActive" checked>
           <span data-i18n="product_active">Активний</span>

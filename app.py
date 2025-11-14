@@ -1272,10 +1272,10 @@ def get_payment_methods():
             'description': 'Оплата через онлайн-банкінг'
         },
         {
-            'id': 'cash',
-            'name': 'Готівка при отриманні',
-            'icon': '💵',
-            'description': 'Оплата при доставці'
+            'id': 'paypal',
+            'name': 'PayPal',
+            'icon': '🅿️',
+            'description': 'Швидка оплата через PayPal'
         }
     ]
     return jsonify({'status': 'success', 'methods': methods}), 200
@@ -1294,7 +1294,7 @@ def create_payment():
             return jsonify({'status': 'error', 'message': 'order_id та payment_method обов\'язкові'}), 400
         
         # Перевірка методу оплати
-        valid_methods = ['card', 'online_banking', 'cash']
+        valid_methods = ['card', 'online_banking', 'paypal']
         if payment_method not in valid_methods:
             return jsonify({'status': 'error', 'message': f'Невірний метод оплати. Дозволені: {", ".join(valid_methods)}'}), 400
         
@@ -1362,9 +1362,24 @@ def create_payment():
                 user.is_premium = True
                 logging.info(f"Premium активовано для користувача {user.email}")
         
-        else:  # cash
-            payment.status = 'pending'
-            payment.payment_details = json.dumps({'note': 'Оплата готівкою при доставці'})
+        elif payment_method == 'paypal':
+            # Симуляція PayPal
+            import uuid
+            payment.transaction_id = f"PP-{uuid.uuid4().hex[:12].upper()}"
+            payment.status = 'completed'
+            payment.completed_at = datetime.utcnow()
+            payment.payment_details = json.dumps({'provider': 'PayPal'})
+            
+            # Для цифрових продуктів (Premium) - одразу completed
+            is_digital = any('premium' in (item.product.name or '').lower() or 
+                           'преміум' in (item.product.name or '').lower() 
+                           for item in order.items)
+            order.status = 'completed' if is_digital else 'processing'
+            
+            # Активація Premium для користувача
+            if is_digital:
+                user.is_premium = True
+                logging.info(f"Premium активовано для користувача {user.email}")
         
         db.session.add(payment)
         db.session.commit()

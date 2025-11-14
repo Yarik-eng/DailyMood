@@ -217,7 +217,7 @@
 
   async function loadPaymentMethods(){
     try {
-      const r = await fetch('/api/payments/methods', { credentials: 'include' });
+      const r = await fetch(`/api/payments/methods?order_id=${orderId}`, { credentials: 'include' });
       if(!r.ok) throw new Error('Failed to load');
       const data = await r.json();
       paymentMethods = data.methods || [];

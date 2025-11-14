@@ -2,6 +2,77 @@
 
 {% block title %}Про нас — DailyMood{% endblock %}
 
+{% block extra_head %}
+<style>
+  .feedback-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    font-size: 1rem;
+    transition: all 0.18s ease;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  .feedback-input:focus {
+    outline: none;
+    border-color: rgba(99,102,241,0.6);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12), inset 0 2px 6px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+  
+  .feedback-input::placeholder {
+    color: rgba(255,255,255,0.4);
+  }
+  
+  html.dark .feedback-input {
+    background: rgba(2,6,23,0.6);
+    border-color: rgba(79,172,254,0.15);
+    color: #e6eef8;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+  }
+  
+  html:not(.dark) .feedback-input {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(2,6,23,0.12);
+    color: #0f172a;
+    box-shadow: inset 0 1px 2px rgba(2,6,23,0.1);
+  }
+  
+  html:not(.dark) .feedback-input::placeholder {
+    color: rgba(15,23,42,0.4);
+  }
+  
+  .feedback-select {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    font-size: 1rem;
+    transition: all 0.18s ease;
+    cursor: pointer;
+  }
+  
+  html.dark .feedback-select {
+    background: rgba(2,6,23,0.6);
+    border-color: rgba(79,172,254,0.15);
+    color: #e6eef8;
+  }
+  
+  html:not(.dark) .feedback-select {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(2,6,23,0.12);
+    color: #0f172a;
+  }
+  
+  html:not(.dark) .feedback-select option {
+    background: #ffffff;
+    color: #0f172a;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-5xl mx-auto px-6 py-16">
   <section class="theme-panel card p-8">
@@ -57,16 +128,16 @@
   <section class="theme-panel card p-8" id="feedback-section" style="margin-top:16px;">
     <h2 class="text-xl font-semibold text-gray-900 mb-4 dark:text-gray-100" data-i18n="feedback_title">Зворотний зв'язок</h2>
     <form id="feedbackForm" class="add-form" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <input type="text" id="fbName" placeholder="Ім'я (необов'язково)" data-i18n="feedback_name">
-      <input type="email" id="fbEmail" placeholder="Email (необов'язково)" data-i18n="feedback_email">
-      <textarea id="fbMessage" rows="4" placeholder="Ваш відгук..." data-i18n="feedback_message" style="grid-column:1/-1"></textarea>
-      <select id="fbRating" aria-label="Rating" style="max-width:180px;">
+      <input type="text" id="fbName" class="feedback-input" placeholder="Ім'я (необов'язково)" data-i18n="feedback_name">
+      <input type="email" id="fbEmail" class="feedback-input" placeholder="Email (необов'язково)" data-i18n="feedback_email">
+      <textarea id="fbMessage" class="feedback-input" rows="4" placeholder="Ваш відгук..." data-i18n="feedback_message" style="grid-column:1/-1"></textarea>
+      <select id="fbRating" class="feedback-select" aria-label="Rating" style="max-width:180px;">
         <option value="" data-i18n="feedback_rating_none">Без оцінки</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
+        <option value="1">1 ⭐</option>
+        <option value="2">2 ⭐⭐</option>
+        <option value="3">3 ⭐⭐⭐</option>
+        <option value="4">4 ⭐⭐⭐⭐</option>
+        <option value="5">5 ⭐⭐⭐⭐⭐</option>
       </select>
       <button type="submit" class="btn" style="max-width:220px;" data-i18n="feedback_send">Надіслати відгук</button>
     </form>
