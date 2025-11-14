@@ -99,7 +99,9 @@
   function moveUnderlineTo(el, underline){
     if (!el || !underline) return;
     const rect = el.getBoundingClientRect();
-    const navRect = el.closest('.site-nav').getBoundingClientRect();
+    const container = el.closest('.nav-main') || el.closest('.site-nav');
+    if (!container) return;
+    const navRect = container.getBoundingClientRect();
     // center point of the element relative to nav
     const centerX = rect.left - navRect.left + rect.width / 2;
     // target width is a fraction of element width but clamped
@@ -114,9 +116,10 @@
   function initUnderline(){
     const underline = document.getElementById('nav-underline');
     if (!underline) return;
-    const nav = document.querySelectorAll('.site-nav .nav-item');
+    const nav = document.querySelectorAll('.site-nav .nav-primary');
+    if (nav.length === 0) return;
     // on load, find .nav-active
-    const active = document.querySelector('.site-nav .nav-item.nav-active') || nav[0];
+    const active = document.querySelector('.site-nav .nav-primary.nav-active') || nav[0];
     moveUnderlineTo(active, underline);
 
     // hover behavior
@@ -136,7 +139,7 @@
 
     // responsive: recalc on resize
     window.addEventListener('resize', function(){
-      const activeNow = document.querySelector('.site-nav .nav-item.nav-active') || nav[0];
+      const activeNow = document.querySelector('.site-nav .nav-primary.nav-active') || nav[0];
       moveUnderlineTo(activeNow, underline);
     });
   }

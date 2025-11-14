@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+  <section class="theme-panel card p-8" style="text-align:left;">
+    <h1 class="text-3xl font-extrabold mb-4" data-i18n="admin_dashboard_title">Адмін-панель</h1>
+    <p class="muted" style="margin-bottom:24px;" data-i18n="admin_dashboard_desc">Ласкаво просимо! Оберіть розділ для керування контентом та замовленнями.</p>
+
+    <div class="admin-grid" style="display:grid; gap:20px; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));">
+      <article class="card" style="padding:20px; border-radius:16px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px;">
+        <h2 class="text-xl font-semibold" data-i18n="admin_dashboard_products_title">Продукти магазину</h2>
+        <p class="muted" data-i18n="admin_dashboard_products_desc">Додавайте нові цифрові ресурси, редагуйте їхній опис та керуйте активністю.</p>
+        <a href="{{ url_for('admin_products') }}" class="btn primary" style="align-self:flex-start;" data-i18n="open_section">Відкрити</a>
+      </article>
+
+      <article class="card" style="padding:20px; border-radius:16px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px;">
+        <h2 class="text-xl font-semibold" data-i18n="admin_dashboard_orders_title">Замовлення</h2>
+        <p class="muted" data-i18n="admin_dashboard_orders_desc">Переглядайте покупки користувачів, оновлюйте статуси та слідкуйте за історією.</p>
+        <a href="{{ url_for('admin_orders') }}" class="btn primary" style="align-self:flex-start;" data-i18n="open_section">Відкрити</a>
+      </article>
+
+      <article class="card" style="padding:20px; border-radius:16px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px;">
+        <h2 class="text-xl font-semibold" data-i18n="admin_dashboard_users_title">Користувачі</h2>
+        <p class="muted" data-i18n="admin_dashboard_users_desc">Керуйте списком зареєстрованих користувачів та їхніми правами доступу.</p>
+        <a href="{{ url_for('admin_users') }}" class="btn primary" style="align-self:flex-start;" data-i18n="open_section">Відкрити</a>
+      </article>
+
+      <article class="card" style="padding:20px; border-radius:16px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px;">
+        <h2 class="text-xl font-semibold" data-i18n="admin_dashboard_feedback_title">Зворотний зв'язок</h2>
+        <p class="muted" data-i18n="admin_dashboard_feedback_desc">Читайте відгуки спільноти DailyMood та швидко реагуйте на важливі повідомлення.</p>
+        <a href="{{ url_for('admin_feedback') }}" class="btn primary" style="align-self:flex-start;" data-i18n="open_section">Відкрити</a>
+      </article>
+    </div>
+  </section>
+</div>
+{% endblock %}

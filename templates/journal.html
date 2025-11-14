@@ -5,79 +5,79 @@
 {% block content %}
 
     <main class="journal-container">
-        <h1>Мій щоденник настрою</h1>
+        <h1 data-i18n="journal_title">Мій щоденник настрою</h1>
         
     <section class="new-entry">
-            <h2>Новий запис</h2>
+            <h2 data-i18n="new_entry">Новий запис</h2>
             <form id="journalForm" class="journal-form">
                 <div class="form-group">
-                    <label for="mood">Настрій:</label>
+                    <label for="mood"><span data-i18n="mood">Настрій:</span></label>
                     <select name="mood" id="mood" required>
-                        <option value="happy">😊 Щасливий</option>
-                        <option value="neutral">😐 Нейтральний</option>
-                        <option value="sad">😢 Сумний</option>
+                        <option value="happy" data-i18n="mood_happy">😊 Щасливий</option>
+                        <option value="neutral" data-i18n="mood_neutral">😐 Нейтральний</option>
+                        <option value="sad" data-i18n="mood_sad">😢 Сумний</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label for="date">Дата:</label>
+                    <label for="date"><span data-i18n="date">Дата:</span></label>
                     <input type="date" id="date" name="date" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="title">Заголовок:</label>
-                    <input type="text" id="title" name="title" placeholder="Коротко про день" required>
+                    <label for="title"><span data-i18n="entry_title">Заголовок:</span></label>
+                    <input type="text" id="title" name="title" placeholder="Коротко про день" data-i18n="title_placeholder" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="content">Опис дня:</label>
+                    <label for="content"><span data-i18n="content">Опис дня:</span></label>
                     <textarea id="content" name="content" rows="5" 
-                              placeholder="Що сталося сьогодні? Що вплинуло на ваш настрій?"></textarea>
+                              placeholder="Що сталося сьогодні? Що вплинуло на ваш настрій?" data-i18n="content_placeholder"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label for="activities">Активності:</label>
+                    <label for="activities"><span data-i18n="activities">Активності:</span></label>
                     <div class="activities-grid">
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="exercise">
-                            🏃‍♂️ Спорт
+                            <span data-i18n="activity_exercise">🏃‍♂️ Спорт</span>
                         </label>
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="meditation">
-                            🧘‍♂️ Медитація
+                            <span data-i18n="activity_meditation">🧘‍♂️ Медитація</span>
                         </label>
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="reading">
-                            📚 Читання
+                            <span data-i18n="activity_reading">📚 Читання</span>
                         </label>
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="social">
-                            👥 Спілкування
+                            <span data-i18n="activity_social">👥 Спілкування</span>
                         </label>
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="nature">
-                            🌳 Природа
+                            <span data-i18n="activity_nature">🌳 Природа</span>
                         </label>
                         <label class="activity-item">
                             <input type="checkbox" name="activities" value="work">
-                            💼 Робота
+                            <span data-i18n="activity_work">💼 Робота</span>
                         </label>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary">Зберегти запис</button>
+                <button type="submit" class="btn-primary" data-i18n="save_entry">Зберегти запис</button>
             </form>
         </section>
 
     <section class="entries-list">
-            <h2>Мої записи</h2>
+            <h2 data-i18n="my_entries">Мої записи</h2>
             <div class="entries-filter">
                 <input type="month" id="monthFilter">
                 <select id="moodFilter">
-                    <option value="">Всі настрої</option>
-                    <option value="happy">😊 Щасливий</option>
-                    <option value="neutral">😐 Нейтральний</option>
-                    <option value="sad">😢 Сумний</option>
+                    <option value="" data-i18n="all_moods">Всі настрої</option>
+                    <option value="happy" data-i18n="mood_happy">😊 Щасливий</option>
+                    <option value="neutral" data-i18n="mood_neutral">😐 Нейтральний</option>
+                    <option value="sad" data-i18n="mood_sad">😢 Сумний</option>
                 </select>
             </div>
             
@@ -91,8 +91,23 @@
 
 {% block extra_scripts %}
 <script>
+    // Простий i18n-хелпер для цієї сторінки
+    function t(key) {
+        try {
+            return (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') ? (translations_uk[key] || '') : (translations_en[key] || '');
+        } catch (e) { return ''; }
+    }
+
     // Встановлюємо сьогоднішню дату за замовчуванням
     document.getElementById('date').valueAsDate = new Date();
+
+    function formatDateForLang(iso) {
+        try {
+            const d = new Date(iso);
+            const locale = (typeof currentLanguage !== 'undefined' && currentLanguage === 'en') ? 'en-US' : 'uk-UA';
+            return d.toLocaleDateString(locale);
+        } catch (e) { return iso; }
+    }
 
     // Обробка відправки форми
     document.getElementById('journalForm').addEventListener('submit', async (e) => {
@@ -119,16 +134,16 @@
             });
 
             if (response.ok) {
-                alert('Запис збережено!');
+                alert(t('entry_saved') || 'Запис збережено!');
                 loadEntries(); // Оновлюємо список записів
                 e.target.reset();
                 document.getElementById('date').valueAsDate = new Date();
             } else {
-                alert('Помилка при збереженні запису');
+                alert(t('save_error') || 'Помилка при збереженні запису');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Помилка при збереженні запису');
+            alert(t('save_error') || 'Помилка при збереженні запису');
         }
     });
 
@@ -151,10 +166,10 @@
                     <header>
                         <div class="entry-header-left">
                             <h3>${entry.title}</h3>
-                            <time datetime="${entry.date}">${new Date(entry.date).toLocaleDateString('uk-UA')}</time>
+                            <time datetime="${entry.date}">${formatDateForLang(entry.date)}</time>
                         </div>
                         <div class="entry-header-right">
-                            <button class="btn-link delete-entry" data-id="${entry.id}" title="Видалити запис">Видалити</button>
+                            <button class="btn-link delete-entry" data-id="${entry.id}" title="${t('delete') || 'Видалити'}">${t('delete') || 'Видалити'}</button>
                         </div>
                     </header>
                     <p>${entry.content || ''}</p>
@@ -179,7 +194,7 @@
         const id = btn.dataset.id;
         if (!id) return;
 
-        if (!confirm('Ви справді хочете видалити цей запис? Цю дію не можна скасувати.')) return;
+    if (!confirm(t('confirm_delete_entry') || 'Ви справді хочете видалити цей запис? Цю дію не можна скасувати.')) return;
 
         try {
             const resp = await fetch(`/api/journal/${id}`, { method: 'DELETE' });
@@ -188,11 +203,11 @@
                 loadEntries();
             } else {
                 const data = await resp.json().catch(() => ({}));
-                alert(data.message || 'Не вдалося видалити запис');
+                alert(data.message || t('delete_failed') || 'Не вдалося видалити запис');
             }
         } catch (err) {
             console.error('Delete error:', err);
-            alert('Помилка при видаленні запису');
+            alert(t('delete_failed') || 'Помилка при видаленні запису');
         }
     });
 
@@ -212,5 +227,8 @@
     loadEntries();
     document.getElementById('monthFilter').addEventListener('change', loadEntries);
     document.getElementById('moodFilter').addEventListener('change', loadEntries);
+
+    // Перерендер форматів дати/текстів при зміні мови
+    window.addEventListener('languageChanged', () => { try { loadEntries(); } catch(e){} });
 </script>
 {% endblock %}

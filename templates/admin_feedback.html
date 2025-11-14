@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Feedback{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+  <section class="theme-panel card p-6" style="text-align:left;">
+    <h1 class="text-2xl font-extrabold mb-4">Feedback admin</h1>
+    <p class="muted" style="margin-bottom:12px;">Review the latest feedback and delete spam/duplicates. This demo panel has no auth.</p>
+
+    <div class="panel-actions" style="justify-content:flex-start; gap:8px; margin-bottom:10px;">
+      <button id="refreshBtn" class="btn secondary">Refresh</button>
+    </div>
+
+    <div class="entries-list" style="overflow:auto;">
+      <table id="fbTable" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">ID</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Name</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Email</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Rating</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Date</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Message</th>
+            <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fbBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const bodyEl = document.getElementById('fbBody');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  function formatDate(iso){ try { return new Date(iso).toLocaleString(); } catch(e){ return iso; } }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  async function load(){
+    bodyEl.innerHTML = '<tr><td colspan="7" style="padding:10px; opacity:0.8;">Loading…</td></tr>';
+    try {
+      const r = await fetch('/api/feedback');
+      if(!r.ok) throw new Error('Bad response');
+      const data = await r.json();
+      if(!Array.isArray(data) || data.length===0){
+        bodyEl.innerHTML = '<tr><td colspan="7" style="padding:10px; opacity:0.8;">No feedback yet</td></tr>';
+        return;
+      }
+      bodyEl.innerHTML = data.map(f => {
+        const msg = escapeHtml(f.message || '');
+        const short = msg.length > 220 ? msg.slice(0,219) + '…' : msg;
+        const rating = (f.rating!=null && f.rating!=='') ? f.rating : '';
+        return `<tr data-id="${f.id}">
+          <td style="padding:8px;">#${f.id}</td>
+          <td style="padding:8px;">${escapeHtml(f.name||'')}</td>
+          <td style="padding:8px;">${escapeHtml(f.email||'')}</td>
+          <td style="padding:8px;">${rating}</td>
+          <td style="padding:8px;">${f.created_at?formatDate(f.created_at):''}</td>
+          <td style="padding:8px; max-width:520px;">${short}</td>
+          <td style="padding:8px; text-align:right;">
+            <button class="btn-link delete-entry" data-action="del" data-id="${f.id}">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(err){
+      console.error('Load feedback failed', err);
+      bodyEl.innerHTML = '<tr><td colspan="7" style="padding:10px; color:#ef4444;">Failed to load</td></tr>';
+    }
+  }
+
+  async function onDelete(id){
+    if(!confirm('Delete this feedback?')) return;
+    try {
+      const r = await fetch(`/api/feedback/${id}`, { method: 'DELETE' });
+      if(!r.ok) throw new Error('Bad response');
+      // Remove row
+      const tr = bodyEl.querySelector(`tr[data-id="${id}"]`);
+      if(tr){ tr.parentNode.removeChild(tr); }
+    } catch(err){
+      console.error('Delete failed', err);
+      alert('Failed to delete');
+    }
+  }
+
+  bodyEl.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action="del"]');
+    if(btn){ onDelete(btn.getAttribute('data-id')); }
+  });
+
+  refreshBtn.addEventListener('click', load);
+  window.addEventListener('languageChanged', load);
+  load();
+})();
+</script>
+{% endblock %}

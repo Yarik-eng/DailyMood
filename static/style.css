@@ -1,7 +1,6 @@
 /* Кастомні стилі DailyMood */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-/* @import url('new_styles.css');  -- commented out because file not present */
 
 /* Стилі перемикача теми (анімація Uiverse.io) - не змінюйте ці селектори */
 #theme-toggle-button {
@@ -137,9 +136,28 @@ body.light-mode * { color: inherit; }
 }
 .btn.secondary:hover { background: rgba(99,102,241,0.06); transform: translateY(-2px); }
 
+/* Danger variants for destructive actions */
+.btn.danger {
+  --btn-danger: #ef4444; /* red-500 */
+  background: linear-gradient(180deg, var(--btn-danger), #dc2626);
+  color: #ffffff;
+  border-color: rgba(239,68,68,0.18);
+  box-shadow: 0 10px 28px rgba(239,68,68,0.18);
+}
+.btn.danger:hover { transform: translateY(-3px); filter: brightness(0.98); box-shadow: 0 14px 36px rgba(239,68,68,0.22); }
+.btn.danger:active { transform: translateY(0); box-shadow: 0 8px 20px rgba(239,68,68,0.16); }
+.btn.danger:focus { outline: 3px solid rgba(239,68,68,0.22); outline-offset: 2px; }
+
+.btn.secondary.danger {
+  color: #ef4444;
+  border-color: rgba(239,68,68,0.28);
+}
+.btn.secondary.danger:hover { background: rgba(239,68,68,0.08); }
+
 /* Make small buttons slightly larger on dark theme for contrast */
 html.dark .btn { box-shadow: 0 10px 30px rgba(139,92,246,0.08); }
 html.dark .btn.secondary { border-color: rgba(139,92,246,0.14); }
+html.dark .btn.danger { box-shadow: 0 10px 30px rgba(239,68,68,0.16); }
 
 /* Quote enter/exit animations used by JS */
 .fade-enter { opacity: 0; transform: translateY(8px); }
@@ -419,6 +437,40 @@ html.dark .subtitle::before {
 
 .btn { font-weight: 700; }
 
+/* Link-style buttons (inline actions) */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--btn-accent);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 140ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.btn-link:hover { background: rgba(99,102,241,0.06); transform: translateY(-1px); }
+.btn-link:focus { outline: 3px solid rgba(99,102,241,0.18); outline-offset: 2px; }
+.btn-link:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Danger link/button variants used by delete actions */
+.btn-link.danger,
+.btn-link.delete-entry {
+  color: #ef4444;
+}
+.btn-link.danger:hover,
+.btn-link.delete-entry:hover {
+  background: rgba(239,68,68,0.08);
+}
+.btn-link.danger:focus,
+.btn-link.delete-entry:focus {
+  outline: 3px solid rgba(239,68,68,0.22);
+  outline-offset: 2px;
+}
+
 /* Header / Navigation styles */
 .site-header {
   display: flex;
@@ -430,7 +482,7 @@ html.dark .subtitle::before {
   background: transparent; /* let page background show through for a cleaner header */
 }
 .brand-wrap { display: flex; flex-direction: column; flex: 0 0 auto; }
-.brand { font-weight: 700; font-size: 1.05rem; color: var(--accent); text-decoration: none; }
+.brand { font-weight: 700; font-size: 1.2rem; color: var(--accent); text-decoration: none; }
 .subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
 
 /* Center the main navigation while preserving space for brand and controls */
@@ -497,6 +549,191 @@ html:not(.dark) .brand { -webkit-text-fill-color: transparent; }
 }
 
 /* Navigation styles moved to new_styles.css */
+
+/* ===== Navigation drawer + hamburger styles ===== */
+/* Hamburger button */
+.nav-hamburger {
+  position: relative;
+  width: 40px;
+  height: 40px; /* perfect square */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 10px; /* softer corners but still square */
+  cursor: pointer;
+  transition: transform 140ms ease, background 160ms ease;
+}
+.nav-hamburger:hover { transform: translateY(-1px); }
+html.dark .nav-hamburger:hover { background: rgba(255,255,255,0.04); }
+html:not(.dark) .nav-hamburger:hover { background: rgba(2,6,23,0.06); }
+.nav-hamburger__line {
+  position: absolute;
+  width: 20px; /* shorter lines so icon feels squarer */
+  left: 50%;
+  transform: translateX(-50%);
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: transform 200ms ease, opacity 200ms ease, top 200ms ease;
+}
+.nav-hamburger__line:nth-child(1) { top: 12px; }
+.nav-hamburger__line:nth-child(2) { top: 19px; }
+.nav-hamburger__line:nth-child(3) { top: 26px; }
+.nav-hamburger.is-active .nav-hamburger__line:nth-child(1) { top: 20px; transform: translate(-50%, -50%) rotate(45deg); }
+.nav-hamburger.is-active .nav-hamburger__line:nth-child(2) { opacity: 0; }
+.nav-hamburger.is-active .nav-hamburger__line:nth-child(3) { top: 20px; transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* Drawer container */
+.nav-drawer {
+  position: fixed;
+  inset: 0;
+  display: none; /* hidden by default */
+  z-index: 9000;
+}
+.nav-drawer.open { display: block; }
+
+/* Backdrop */
+.nav-drawer__overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+html:not(.dark) .nav-drawer__overlay{ background: rgba(0,0,0,0.35); }
+.nav-drawer.open .nav-drawer__overlay{ opacity: 1; }
+
+/* Panel */
+.nav-drawer__panel{
+  position: absolute;
+  top: 0; left: 0; bottom: 0; /* open from LEFT */
+  width: 340px;
+  max-width: calc(100% - 48px);
+  background: var(--bg-panel, #0f172a);
+  color: inherit;
+  box-shadow: 24px 0 60px rgba(15,23,42,0.45); /* shadow to the right */
+  padding: 20px;
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 260ms cubic-bezier(.22,.9,.3,1), opacity 220ms ease;
+}
+html:not(.dark) .nav-drawer__panel{ background: #ffffff; color:#1f2937; box-shadow: 24px 0 60px rgba(0,0,0,0.15); }
+.nav-drawer.open .nav-drawer__panel{ transform: translateX(0); opacity: 1; }
+
+/* Basic internal layout */
+.nav-drawer__header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.nav-drawer__title{ margin:0; font-size:1.1rem; font-weight:800; }
+.nav-drawer__close{ border:none; background:transparent; font-size:1.4rem; padding:6px 10px; cursor:pointer; }
+.nav-drawer__section{ display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.nav-drawer__section-title{ margin:8px 0; font-weight:800; opacity:0.85; letter-spacing:0.02em; }
+
+/* Unified button-like styling for ALL drawer links */
+.nav-drawer__link{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  text-decoration:none;
+  color:inherit;
+  border:1px solid rgba(148,163,184,0.18);
+  background: rgba(255,255,255,0.03);
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.nav-drawer__link:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.06); }
+html:not(.dark) .nav-drawer__link{ background: rgba(2,6,23,0.02); border-color: rgba(2,6,23,0.08); }
+html:not(.dark) .nav-drawer__link:hover{ background: rgba(2,6,23,0.05); }
+.nav-drawer__link:focus-visible{ outline:3px solid rgba(99,102,241,0.22); outline-offset:2px; }
+
+/* Active page: accented border + soft glow */
+.nav-drawer__link--active{
+  border-color: var(--profile-accent, #6366f1);
+  box-shadow: 0 0 0 3px var(--profile-glow, rgba(99,102,241,0.18));
+  background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.06));
+}
+html:not(.dark) .nav-drawer__link--active{
+  background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.04));
+}
+
+/* Accent button-like link inside drawer */
+.nav-drawer__link--accent{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--profile-accent, #6366f1), #4f46e5);
+  color: var(--profile-accent-contrast, #ffffff);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 10px 28px var(--profile-glow, rgba(99,102,241,0.18));
+}
+.nav-drawer__link--accent:hover{ filter: brightness(0.98); transform: translateY(-1px); }
+.nav-drawer__link--accent:active{ transform: translateY(0); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+
+/* Body scroll lock when open */
+body.nav-drawer-open { overflow: hidden; }
+
+/* Small screens: full width panel */
+@media (max-width: 520px){
+  .nav-drawer__panel{ width: calc(100% - 32px); max-width:none; left:16px; right:16px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); transform: translateX(0); }
+}
+
+/* ===== Header gradient + thicker fonts + active states ===== */
+/* Dark theme header: subtle cool gradient with blur */
+html.dark .site-header{
+  background: linear-gradient(90deg, rgba(7,17,34,0.72), rgba(15,23,42,0.58), rgba(7,17,34,0.72));
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+/* Light theme header: warm translucent gradient */
+html:not(.dark) .site-header{
+  background: linear-gradient(90deg, rgba(255,107,107,0.10), rgba(255,217,61,0.08), rgba(255,107,107,0.10));
+  border-bottom: 1px solid rgba(2,6,23,0.06);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Stronger typography in header */
+.brand{ font-weight: 800; }
+.site-nav .nav-item{
+  font-weight: 700; /* thicker */
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  transition: transform 140ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.site-nav .nav-item:hover{
+  background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.06));
+  border-color: rgba(99,102,241,0.25);
+  transform: translateY(-1px);
+}
+.site-nav .nav-item.nav-active{
+  border-color: var(--profile-accent, #6366f1);
+  box-shadow: 0 0 0 3px var(--profile-glow, rgba(99,102,241,0.18));
+  background: linear-gradient(180deg, rgba(99,102,241,0.16), rgba(99,102,241,0.08));
+}
+html:not(.dark) .site-nav .nav-item:hover{ background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.04)); }
+html:not(.dark) .site-nav .nav-item.nav-active{ background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.06)); }
+
+
+/* Brand glow for the active header tab (match logo colors) */
+html.dark .site-nav .nav-item.nav-active{
+  background: linear-gradient(90deg,#4facfe,#00f2fe) !important;
+  color: #041024 !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 28px rgba(79,172,254,0.25), 0 0 0 2px rgba(79,172,254,0.25) !important;
+}
+html:not(.dark) .site-nav .nav-item.nav-active{
+  background: linear-gradient(90deg,#ff6b6b,#ffd93d) !important;
+  color: #041024 !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 28px rgba(255,107,107,0.22), 0 0 0 2px rgba(255,107,107,0.22) !important;
+}
+
 
 .header-controls { display: flex; align-items: center; gap: 12px; }
 .header-controls label { position: relative; }
@@ -848,21 +1085,6 @@ html:not(.dark) .controls::before {
 .theme-panel .fav-actions button { width: 100px !important; height: 40px !important; padding: 6px 10px !important; box-shadow: 0 14px 36px rgba(59,36,139,0.22) !important; border: 1px solid rgba(255,255,255,0.12) !important; background: linear-gradient(180deg,#8b5cf6,#7c3aed) !important; color: #fff !important; position: relative !important; z-index: 230 !important; }
 .theme-panel .fav-actions button::before { content: ''; position: absolute; left: -10px; right: -10px; top: -10px; bottom: -10px; border-radius: 12px; background: radial-gradient(circle at center, rgba(124,58,237,0.08), rgba(99,102,241,0) 45%); filter: blur(10px); z-index: 220; pointer-events: none; }
 .theme-panel .fav-actions .btn.secondary { background: rgba(255,255,255,0.04) !important; color: rgba(255,255,255,0.98) !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 8px 18px rgba(2,6,23,0.36) !important; }
-
-/* Make the per-item delete button (in favorites) more prominent and red so it doesn't blend into light backgrounds */
-.theme-panel .fav-actions button[data-remove-index] {
-  background: linear-gradient(180deg, #ef4444, #f87171) !important;
-  color: #fff !important;
-  border: 1px solid rgba(0,0,0,0.06) !important;
-  box-shadow: 0 12px 30px rgba(239,68,68,0.14) !important;
-}
-.theme-panel .fav-actions button[data-remove-index]:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(239,68,68,0.18) !important; }
-
-/* Light theme explicit override for the delete button to ensure contrast */
-html:not(.dark) .theme-panel .fav-actions button[data-remove-index] {
-  background: linear-gradient(180deg,#ef4444,#f97373) !important;
-  color: #041024 !important;
-}
 .panel-actions { justify-content: center !important; z-index: 220 !important; }
 .panel-actions .btn { box-shadow: 0 14px 32px rgba(79,70,229,0.16) !important; opacity: 1 !important; position: relative !important; }
 .panel-actions .btn::before { content: ''; position: absolute; left: -8px; right: -8px; top: -8px; bottom: -8px; border-radius: 12px; background: radial-gradient(circle at center, rgba(124,58,237,0.06), rgba(99,102,241,0) 40%); filter: blur(12px); z-index: 210; pointer-events: none; }
@@ -1084,32 +1306,6 @@ html.dark .journal-container h1::after {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(2,6,23,0.2);
 }
-.habit-item { /* subtle entrance animation so items don't just 'pop' on white backgrounds */
-  opacity: 0;
-  transform: translateY(6px);
-  animation: habit-appear 300ms cubic-bezier(.2,.9,.2,1) forwards;
-}
-
-@keyframes habit-appear {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Improve contrast for habit items in light theme so they don't vanish on white backgrounds */
-html:not(.dark) .habit-item {
-  background: linear-gradient(180deg,#ffffff,#fbfbfb);
-  color: #041024;
-  box-shadow: 0 8px 24px rgba(4,16,36,0.06);
-  border: 1px solid rgba(4,16,36,0.04);
-}
-html:not(.dark) .habit-name { color: #041024; }
-html:not(.dark) .habit-checkbox input { filter: contrast(1.05); }
-
-/* Make the habit delete button more visible on light backgrounds */
-html:not(.dark) .habit-item .delete-btn {
-  background: linear-gradient(180deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));
-  color: #b91c1c;
-  border: 1px solid rgba(239,68,68,0.10);
-}
 .habit-name { 
   flex: 1; 
   font-weight: 600;
@@ -1122,110 +1318,15 @@ html:not(.dark) .habit-item .delete-btn {
 .delete-btn { 
   background: transparent; 
   border: none; 
-  color: rgba(255,255,255,0.6); 
+  color: #ef4444; /* red-500 */
   font-size: 1.2rem; 
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  border-radius: 6px;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.14s ease;
 }
-.delete-btn:hover {
-  background-color: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.8);
-}
-
-/* Link-like button and delete-entry design */
-.btn-link {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.06);
-  color: inherit;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, color 160ms ease;
-}
-
-.btn-link:focus { outline: 3px solid rgba(99,102,241,0.14); outline-offset: 2px; }
-
-.btn-link.delete-entry {
-  --danger: #ef4444;
-  color: var(--danger);
-  background: rgba(239,68,68,0.06);
-  border: 1px solid rgba(239,68,68,0.12);
-  box-shadow: 0 6px 20px rgba(239,68,68,0.06);
-}
-
-.btn-link.delete-entry::before { content: '🗑️'; margin-right:6px; }
-
-.btn-link.delete-entry:hover { transform: translateY(-2px); background: linear-gradient(180deg, rgba(239,68,68,0.10), rgba(239,68,68,0.06)); box-shadow: 0 12px 34px rgba(239,68,68,0.12); }
-
-html.dark .btn-link.delete-entry { color: #fff; background: linear-gradient(180deg, rgba(239,68,68,0.14), rgba(239,68,68,0.08)); border:1px solid rgba(255,255,255,0.06); }
-
-/* Design for inline link-style buttons and the journal delete button */
-.btn-link {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.06);
-  color: inherit;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, color 160ms ease;
-}
-
-.btn-link:focus {
-  outline: 3px solid rgba(99,102,241,0.14);
-  outline-offset: 2px;
-}
-
-/* Specific visual style for delete buttons used in the journal entries */
-.btn-link.delete-entry {
-  --danger: #ef4444; /* red-500 */
-  color: var(--danger);
-  background: rgba(239,68,68,0.06);
-  border: 1px solid rgba(239,68,68,0.12);
-  box-shadow: 0 6px 20px rgba(239,68,68,0.06);
-  padding: 6px 10px;
-}
-
-.btn-link.delete-entry::before {
-  content: '🗑️';
-  display: inline-block;
-  margin-right: 6px;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.btn-link.delete-entry:hover {
-  transform: translateY(-2px);
-  background: linear-gradient(180deg, rgba(239,68,68,0.10), rgba(239,68,68,0.06));
-  box-shadow: 0 12px 34px rgba(239,68,68,0.12);
-}
-
-/* Dark theme adjustments so the red stands out on dark backgrounds */
-html.dark .btn-link.delete-entry {
-  color: #fff;
-  background: linear-gradient(180deg, rgba(239,68,68,0.14), rgba(239,68,68,0.08));
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 10px 30px rgba(239,68,68,0.12);
-}
-
-html.dark .btn-link.delete-entry::before { filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
-
-/* Compact appearance on small screens */
-@media (max-width: 520px) {
-  .btn-link.delete-entry { padding: 6px 8px; font-size: 0.9rem; }
-  .btn-link.delete-entry::before { margin-right: 4px; }
-}
+.delete-btn:hover { background-color: rgba(239,68,68,0.10); transform: translateY(-1px); }
+.delete-btn:focus { outline: 3px solid rgba(239,68,68,0.22); outline-offset: 2px; }
 
 .add-form { 
   display: flex; 
@@ -1329,42 +1430,12 @@ html.dark .goals-column .add-form select option {
   filter: invert(0%);
 }
 
-.progress-section { margin-top: 80px; }
-.progress-calendar { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
-.calendar-body { display:grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap:8px; }
-.calendar-day { min-width:44px; height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border-radius:8px; padding:4px; }
-.calendar-day .date { font-size:0.85rem; color: rgba(255,255,255,0.85); margin-bottom:6px; }
-.progress-indicator { width:28px; height:10px; border-radius:6px; background: rgba(255,255,255,0.06); transition: all 180ms ease; }
-.progress-indicator.completed { background: linear-gradient(90deg,#60a5fa,#38bdf8); box-shadow: 0 6px 20px rgba(56,189,248,0.12); transform: translateY(-2px); }
-
-/* Small inline month navigation button */
-.small-btn {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.02);
-  color: inherit;
-  cursor: pointer;
-  font-weight: 700;
-}
-.small-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(2,6,23,0.06); }
-
-/* Empty day placeholders to align month calendars */
-.calendar-day.empty { background: transparent; box-shadow: none; border: none; pointer-events: none; }
-
-/* Goal marker inside calendar day */
-.goal-markers { display:flex; gap:4px; margin-top:6px; justify-content:center; }
-.goal-marker { font-size:0.95rem; line-height:1; display:inline-block; }
-
-/* Make calendar elements more visible on light backgrounds */
-html:not(.dark) .calendar-day { background: linear-gradient(180deg,#ffffff,#fbfbfb); border: 1px solid rgba(4,16,36,0.04); }
-html:not(.dark) .calendar-day .date { color: #041024; }
-html:not(.dark) .progress-indicator { background: rgba(2,6,23,0.04); }
-html:not(.dark) .progress-indicator.completed { background: linear-gradient(90deg,#16a34a,#10b981); box-shadow: 0 8px 26px rgba(16,185,129,0.10); }
-
-/* Hover and focus affordances */
-.calendar-day:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(2,6,23,0.06); cursor: default; }
-.calendar-day:focus { outline: 3px solid rgba(99,102,241,0.12); }
+.progress-section { margin-top: 18px; }
+.progress-calendar { display:flex; gap:20px; align-items:flex-start; }
+.calendar-body { display:grid; grid-template-columns: repeat(10, 1fr); gap:6px; }
+.calendar-day { width:30px; height:36px; display:flex; flex-direction:column; align-items:center; justify-content:center; background: rgba(255,255,255,0.02); border-radius:6px; }
+.progress-indicator { width:18px; height:8px; border-radius:6px; background: rgba(255,255,255,0.06); }
+.progress-indicator.completed { background: linear-gradient(90deg,#60a5fa,#38bdf8); box-shadow: 0 6px 20px rgba(56,189,248,0.12); }
 
 /* Mood-specific color classes for calendar days */
 .calendar-day.mood-happy .progress-indicator { background: linear-gradient(90deg,#34d399,#10b981); box-shadow: 0 6px 18px rgba(16,185,129,0.12); }

@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Orders{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+  <section class="theme-panel card p-6" style="text-align:left;">
+    <h1 class="text-2xl font-extrabold mb-4" data-i18n="admin_orders_title">Управління замовленнями</h1>
+    <p class="muted" style="margin-bottom:12px;" data-i18n="admin_orders_desc">Переглядайте замовлення користувачів та оновлюйте їх статус.</p>
+
+    <div class="panel-actions" style="justify-content:flex-start; gap:8px; margin-bottom:10px;">
+      <button id="refreshOrdersBtn" class="btn secondary" data-i18n="refresh">Оновити</button>
+    </div>
+
+    <div class="entries-list" style="overflow:auto;">
+      <table id="ordersTable" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="id">ID</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="user">Користувач</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="status">Статус</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="total">Сума</th>
+            <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="date">Дата</th>
+            <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08);" data-i18n="actions">Дії</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Модальне вікно деталей замовлення -->
+    <div id="orderDetailsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; padding:40px;">
+      <div style="max-width:800px; margin:0 auto; background:var(--bg-panel, #0f172a); border-radius:16px; padding:24px; max-height:90vh; overflow:auto;">
+        <h2 class="text-xl font-bold mb-4" data-i18n="order_details">Деталі замовлення</h2>
+        <div id="orderDetailsContent"></div>
+        <button id="closeModalBtn" class="btn secondary" style="margin-top:16px;" data-i18n="close">Закрити</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  function t(key){ try { return (typeof currentLanguage!=='undefined' && currentLanguage==='uk') ? (translations_uk[key]||key) : (translations_en[key]||key); } catch(e){ return key; } }
+  
+  const bodyEl = document.getElementById('ordersBody');
+  const refreshBtn = document.getElementById('refreshOrdersBtn');
+  const modal = document.getElementById('orderDetailsModal');
+  const modalContent = document.getElementById('orderDetailsContent');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+
+  function formatDate(iso){ try { return new Date(iso).toLocaleString(); } catch(e){ return iso; } }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  async function loadOrders(){
+    bodyEl.innerHTML = '<tr><td colspan="6" style="padding:10px; opacity:0.8;">'+t('loading')+'</td></tr>';
+    try {
+  const r = await fetch('/api/orders', { credentials: 'include' });
+      if(!r.ok) throw new Error('Bad response');
+      const data = await r.json();
+      if(!Array.isArray(data) || data.length===0){
+        bodyEl.innerHTML = '<tr><td colspan="6" style="padding:10px; opacity:0.8;">'+t('no_orders_yet')+'</td></tr>';
+        return;
+      }
+      bodyEl.innerHTML = data.map(o => {
+        return `<tr data-id="${o.id}">
+          <td style="padding:8px;">#${o.id}</td>
+          <td style="padding:8px;">${escapeHtml(o.user_email||'')}</td>
+          <td style="padding:8px;">
+            <select class="status-select" data-id="${o.id}" style="padding:4px 8px; border-radius:6px;">
+              <option value="new" ${o.status==='new'?'selected':''}>${t('order_status_new')}</option>
+              <option value="processing" ${o.status==='processing'?'selected':''}>${t('order_status_processing')}</option>
+              <option value="completed" ${o.status==='completed'?'selected':''}>${t('order_status_completed')}</option>
+              <option value="canceled" ${o.status==='canceled'?'selected':''}>${t('order_status_canceled')}</option>
+            </select>
+          </td>
+          <td style="padding:8px;">${o.total_amount.toFixed(2)}</td>
+          <td style="padding:8px;">${formatDate(o.created_at)}</td>
+          <td style="padding:8px; text-align:right;">
+            <button class="btn-link" data-action="view" data-id="${o.id}">${t('view')}</button>
+            <button class="btn-link delete-entry" data-action="del" data-id="${o.id}">${t('delete')}</button>
+          </td>
+        </tr>`;
+      }).join('');
+      
+      // Додаємо обробник зміни статусу
+      document.querySelectorAll('.status-select').forEach(sel => {
+        sel.addEventListener('change', async (e)=>{
+          const id = e.target.getAttribute('data-id');
+          const newStatus = e.target.value;
+          await updateOrderStatus(id, newStatus);
+        });
+      });
+      
+    } catch(err){
+      console.error('Load orders failed', err);
+      bodyEl.innerHTML = '<tr><td colspan="6" style="padding:10px; color:#ef4444;">'+t('load_failed')+'</td></tr>';
+    }
+  }
+
+  async function updateOrderStatus(id, status){
+    try {
+      const r = await fetch(`/api/orders/${id}/status`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({status})
+      });
+      if(!r.ok) throw new Error('Bad response');
+      // Опційно: показати повідомлення про успіх
+    } catch(err){
+      console.error('Update status failed', err);
+      alert(t('update_failed'));
+      loadOrders(); // Перезавантажити
+    }
+  }
+
+  async function viewOrder(id){
+    try {
+  const r = await fetch(`/api/orders/${id}`, { credentials: 'include' });
+      if(!r.ok) throw new Error('Bad response');
+      const data = await r.json();
+      const order = data.order;
+      
+      let itemsHtml = '<ul style="list-style:none; padding:0;">';
+      if(order.items && order.items.length > 0){
+        order.items.forEach(item => {
+          itemsHtml += `<li style="padding:8px; background:rgba(255,255,255,0.02); margin-bottom:6px; border-radius:6px;">
+            <strong>${escapeHtml(item.product_name)}</strong><br>
+            ${t('quantity')}: ${item.quantity} × ${item.unit_price.toFixed(2)} = ${item.subtotal.toFixed(2)}
+          </li>`;
+        });
+      } else {
+        itemsHtml += '<li>'+t('no_items')+'</li>';
+      }
+      itemsHtml += '</ul>';
+      
+      modalContent.innerHTML = `
+        <div><strong>${t('order_id')}:</strong> #${order.id}</div>
+        <div><strong>${t('user')}:</strong> ${escapeHtml(order.user_email||'')}</div>
+  <div><strong>${t('status')}:</strong> ${t('order_status_' + order.status)}</div>
+        <div><strong>${t('total')}:</strong> ${order.total_amount.toFixed(2)}</div>
+        <div><strong>${t('created_at')}:</strong> ${formatDate(order.created_at)}</div>
+        <div style="margin-top:16px;"><strong>${t('items')}:</strong></div>
+        ${itemsHtml}
+      `;
+      modal.style.display = 'block';
+    } catch(err){
+      console.error('View order failed', err);
+      alert(t('load_failed'));
+    }
+  }
+
+  async function deleteOrder(id){
+    if(!confirm(t('confirm_delete_order'))) return;
+    try {
+  const r = await fetch(`/api/orders/${id}`, { method: 'DELETE', credentials: 'include' });
+      if(!r.ok) throw new Error('Bad response');
+      loadOrders();
+    } catch(err){
+      console.error('Delete failed', err);
+      alert(t('delete_failed'));
+    }
+  }
+
+  bodyEl.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if(action === 'view') viewOrder(id);
+    if(action === 'del') deleteOrder(id);
+  });
+
+  closeModalBtn.addEventListener('click', ()=> modal.style.display='none');
+  refreshBtn.addEventListener('click', loadOrders);
+  window.addEventListener('languageChanged', loadOrders);
+  
+  loadOrders();
+})();
+</script>
+{% endblock %}

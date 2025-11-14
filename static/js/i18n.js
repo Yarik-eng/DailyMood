@@ -12,8 +12,6 @@ function changeLanguage(lang) {
     if (langSelect) {
         langSelect.classList.add('changing');
         langSelect.setAttribute('value', lang);
-// Підтримувані мови
-// Поточна мова
         langSelect.value = lang;
         
         // Видаляємо клас після завершення анімації
@@ -40,7 +38,8 @@ function changeLanguage(lang) {
                 } else {
                     element.textContent = translation;
                 }
-});
+            }
+        });
         
         document.body.style.opacity = '1';
     }, 150);

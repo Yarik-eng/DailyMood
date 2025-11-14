@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}Магазин — DailyMood{% endblock %}
+
+{% block content %}
+  <section class="page-banner">
+    <h1>Магазин</h1>
+  </section>
+
+  <section class="theme-panel" aria-labelledby="store-title">
+    <h2 id="store-title" style="margin-top:0;">Преміум та підтримка</h2>
+    <p class="muted" style="margin-top:6px;">Обери Premium для розширених можливостей або підтримай нас покупкою доповнень.</p>
+
+    <div class="pricing" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-top:14px;">
+      <article class="card" aria-label="Free plan">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <div class="muted" style="font-weight:700; letter-spacing:.02em;" data-i18n="free_plan">Free</div>
+            <h3 style="margin:4px 0 10px 0; font-weight:900;" data-i18n="free_plan">Безкоштовний</h3>
+            <div class="muted" data-i18n="free_plan_desc">Базовий функціонал для щоденного трекінгу настрою.</div>
+          </div>
+          <ul style="list-style:none; padding:0; margin:8px 0 0 0; display:flex; flex-direction:column; gap:6px;">
+            <li data-i18n="feature_basic">✓ Журнал настрою</li>
+            <li>✓ <span data-i18n="nav_favorites">Улюблене</span> та <span data-i18n="nav_goals">цілі</span></li>
+            <li data-i18n="feature_stats">✓ Базова статистика</li>
+            <li data-i18n="feature_themes">✗ Преміум теми</li>
+            <li data-i18n="feature_advanced_stats">✗ Розширена статистика</li>
+            <li data-i18n="feature_support">✗ Пріоритетна підтримка</li>
+          </ul>
+          <button type="button" class="btn secondary" id="freeDetailsBtn" data-i18n="more_details">Детальніше</button>
+        </div>
+      </article>
+
+      <article class="card" aria-label="Premium plan" style="border:1px solid rgba(147,197,253,.25); box-shadow:0 0 0 2px rgba(147,197,253,.15) inset;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <div style="font-weight:700; color:#60a5fa; letter-spacing:.02em;" data-i18n="premium_plan">Premium</div>
+            <h3 style="margin:4px 0 10px 0; font-weight:900;" data-i18n="premium_plan">Преміум</h3>
+            <div class="muted" data-i18n="premium_plan_desc">Більше тем, глибша статистика, підтримка розвитку.</div>
+          </div>
+          <ul style="list-style:none; padding:0; margin:8px 0 0 0; display:flex; flex-direction:column; gap:6px;">
+            <li>✓ <span data-i18n="free_plan">Усі можливості Free</span></li>
+            <li data-i18n="feature_themes">✓ Преміум теми (фіолетова, бірюзова, сонячна)</li>
+            <li data-i18n="feature_predictor">✓ Mood Predictor — прогноз настрою на завтра</li>
+            <li data-i18n="feature_recommendations">✓ Activity Recommendations — поради на основі настрою</li>
+            <li data-i18n="feature_advanced_stats">✓ Розширена статистика</li>
+            <li data-i18n="feature_support">✓ Пріоритетна підтримка</li>
+          </ul>
+          <div style="display:flex; gap:8px; margin-top:6px; align-items:center;">
+            <button type="button" class="btn" id="getPremiumBtn" data-i18n="get_premium">Отримати Premium</button>
+            <button type="button" class="btn secondary" id="premiumDetailsBtn" data-i18n="more_details">Детальніше</button>
+          </div>
+          <div id="premiumPrice" class="muted" style="margin-top:4px; font-weight:700;"></div>
+        </div>
+      </article>
+    </div>
+
+    <div id="storeProducts" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:14px; margin-top:24px;">
+      <article class="card" style="min-height:120px; display:flex; align-items:center; justify-content:center;">
+        <div class="muted">Завантаження продуктів…</div>
+      </article>
+    </div>
+
+    <div id="storeEmpty" style="display:none; margin-top:16px;">
+      <div style="padding:18px; text-align:center; border:1px dashed rgba(148,163,184,0.35); border-radius:14px;">
+        <p class="muted" style="margin:0 0 10px 0;">Поки що немає товарів. Адмін може додати їх у розділі “Продукти”.</p>
+        <a href="{{ url_for('admin_products') }}" class="btn secondary">Відкрити адмін-продукти</a>
+      </div>
+    </div>
+  </section>
+
+  <div id="compareModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999;">
+    <div id="compareBackdrop" style="position:absolute; inset:0; background:rgba(0,0,0,.5);"></div>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="compareTitle" style="position:relative; max-width:760px; width:calc(100% - 32px); z-index:10000;">
+      <button type="button" id="compareClose" class="btn secondary" style="position:absolute; right:14px; top:14px;">✕</button>
+      <h3 id="compareTitle" style="margin:0 0 10px 0; font-weight:900;" data-i18n="compare_title">Порівняння тарифів</h3>
+      <div class="muted" style="margin-bottom:10px;" data-i18n="compare_subtitle">Що доступно у Free та Premium</div>
+      <div style="overflow:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px;" data-i18n="feature">Можливість</th>
+              <th style="text-align:center; padding:8px;" data-i18n="free_plan">Free</th>
+              <th style="text-align:center; padding:8px;" data-i18n="premium_plan">Premium</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_basic">Журнал, улюблене, цілі</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_stats">Базова статистика</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_themes">Преміум теми</td>
+              <td style="text-align:center; padding:8px;">✗</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_predictor">Mood Predictor — прогноз настрою</td>
+              <td style="text-align:center; padding:8px;">✗</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_recommendations">Activity Recommendations</td>
+              <td style="text-align:center; padding:8px;">✗</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_advanced_stats">Розширена статистика</td>
+              <td style="text-align:center; padding:8px;">✗</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;" data-i18n="feature_support">Пріоритетна підтримка</td>
+              <td style="text-align:center; padding:8px;">✗</td>
+              <td style="text-align:center; padding:8px;">✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button type="button" class="btn secondary" id="compareCancel" data-i18n="close">Закрити</button>
+        <button type="button" class="btn" id="compareGetPremium" data-i18n="get_premium">Отримати Premium</button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function(){
+    const listEl = document.getElementById('storeProducts');
+    const emptyEl = document.getElementById('storeEmpty');
+    const getPremiumBtn = document.getElementById('getPremiumBtn');
+    const premiumDetailsBtn = document.getElementById('premiumDetailsBtn');
+    const freeDetailsBtn = document.getElementById('freeDetailsBtn');
+    const compareModal = document.getElementById('compareModal');
+    const compareBackdrop = document.getElementById('compareBackdrop');
+    const compareClose = document.getElementById('compareClose');
+    const compareCancel = document.getElementById('compareCancel');
+    const compareGetPremium = document.getElementById('compareGetPremium');
+    const premiumPriceEl = document.getElementById('premiumPrice');
+
+    let loadedProducts = [];
+
+    function currency(n){
+      try { return new Intl.NumberFormat('uk-UA', { style:'currency', currency:'UAH' }).format(Number(n||0)); } catch(e){ return (Number(n||0).toFixed(2) + ' грн'); }
+    }
+
+    function findPremiumProduct(){
+      const textMatch = (s='') => /premium|преміум/i.test(String(s));
+      return loadedProducts.find(p => textMatch(p.name) || textMatch(p.description));
+    }
+
+    function updatePremiumPrice(){
+      const premium = findPremiumProduct();
+      if(premium){ premiumPriceEl.textContent = 'Ціна: ' + currency(premium.price); }
+      else { premiumPriceEl.textContent = 'Тимчасово недоступно'; }
+    }
+
+    function openCompare(){ compareModal.style.display = 'flex'; }
+    function closeCompare(){ compareModal.style.display = 'none'; }
+
+    function makeCard(p){
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.style.minHeight = '120px';
+
+      const name = (p && p.name) || 'Товар';
+      const desc = (p && p.description) || '';
+      const price = currency((p && p.price) || 0);
+
+      el.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start; width:100%;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; width:100%;">
+            <h3 style="margin:0; font-size:1.2rem; font-weight:800;">${name}</h3>
+            <div style="font-weight:800; opacity:0.9;">${price}</div>
+          </div>
+          <p class="muted" style="margin:0;">${desc}</p>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button type="button" class="btn" data-product-id="${p.id}">Купити</button>
+            <button type="button" class="btn secondary" data-product-id="${p.id}" data-action="details">Деталі</button>
+          </div>
+        </div>`;
+
+      const buyBtn = el.querySelector('button.btn');
+      const detailsBtn = el.querySelector('button[data-action="details"]');
+      if(buyBtn){ buyBtn.addEventListener('click', () => buyNow(p)); }
+      if(detailsBtn){ detailsBtn.addEventListener('click', () => alert(desc || 'Без опису')); }
+      return el;
+    }
+
+    async function loadProducts(){
+      try {
+        const r = await fetch('/api/products', { credentials:'include' });
+        if(!r.ok) throw new Error('load');
+        const products = await r.json();
+        loadedProducts = Array.isArray(products) ? products : [];
+        listEl.innerHTML = '';
+        if(loadedProducts.length === 0){
+          emptyEl.style.display = '';
+        } else {
+          emptyEl.style.display = 'none';
+          loadedProducts.forEach(p => listEl.appendChild(makeCard(p)));
+        }
+        updatePremiumPrice();
+      } catch(err){
+        listEl.innerHTML = '<article class="card"><div class="muted">Не вдалося завантажити магазин.</div></article>';
+        console.error('Store load failed', err);
+        updatePremiumPrice();
+      }
+    }
+
+    async function buyNow(product){
+      try {
+        const r = await fetch('/api/orders', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: [{ product_id: product.id, quantity: 1 }] })
+        });
+        if(r.status === 401){
+          window.location.href = '/auth/login?next=' + encodeURIComponent('/store');
+          return;
+        }
+        if(!r.ok) throw new Error('order');
+        const payload = await r.json();
+        const orderId = payload && payload.order ? payload.order.id : null;
+        if(orderId){
+          // Редірект на сторінку оплати
+          window.location.href = '/checkout?order_id=' + orderId;
+        } else {
+          alert('Замовлення створено, але не вдалося перейти до оплати.');
+        }
+      } catch(err){
+        alert('Не вдалося оформити замовлення. Спробуйте ще раз.');
+        console.error('Buy failed', err);
+      }
+    }
+
+    getPremiumBtn.addEventListener('click', () => {
+      const premium = findPremiumProduct();
+      if(premium){ buyNow(premium); }
+      else { alert('Преміум поки недоступний. Спробуйте пізніше.'); }
+    });
+
+    premiumDetailsBtn.addEventListener('click', openCompare);
+    freeDetailsBtn.addEventListener('click', openCompare);
+    compareBackdrop.addEventListener('click', closeCompare);
+    compareClose.addEventListener('click', closeCompare);
+    compareCancel.addEventListener('click', closeCompare);
+    compareGetPremium.addEventListener('click', () => { closeCompare(); getPremiumBtn.click(); });
+
+    loadProducts();
+  })();
+</script>
+{% endblock %}

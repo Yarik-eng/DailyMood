@@ -6,6 +6,11 @@ const translations_uk = {
     'nav_goals': 'Цілі',
     'nav_favorites': 'Улюблене',
     'nav_about': 'Про нас',
+    'nav_menu_title': 'Меню',
+    'nav_section_secondary': 'Сторінки',
+    'nav_section_account': 'Акаунт',
+    'nav_open_menu': 'Відкрити меню',
+    'nav_close_menu': 'Закрити меню',
 
     // Сторінка обраних цитат
     'favorites_title': 'Обрані цитати',
@@ -68,9 +73,156 @@ const translations_uk = {
 
     // Налаштування
     'language': 'Мова:',
-    'theme': 'Тема:'
-    ,
-    // Goals & About
+    'theme': 'Тема:',
+    'feedback_title': 'Зворотний зв’язок',
+    'feedback_name': 'Ім’я (необов’язково)',
+    'feedback_email': 'Email (необов’язково)',
+    'feedback_message': 'Ваш відгук...',
+    'feedback_send': 'Надіслати відгук',
+    'feedback_thanks': 'Дякуємо за ваш відгук!',
+    'feedback_error': 'Помилка при надсиланні відгуку.',
+    'feedback_rating_none': 'Без оцінки',
+
+    // Аутентифікація
+    'login_title': 'Вхід',
+    'register_title': 'Реєстрація',
+    'email': 'Email',
+    'password': 'Пароль',
+    'login_button': 'Увійти',
+    'register_button': 'Зареєструватися',
+    'logout': 'Вийти',
+    'profile_open_button': 'Відкрити профіль',
+    'my_account': 'Мій акаунт',
+    'login_required_message': 'Будь ласка, увійдіть щоб здійснити покупку',
+    'no_account': 'Немає акаунту?',
+    'have_account': 'Вже є акаунт?',
+    'password_hint': 'Мінімум 6 символів',
+    'password_too_short': 'Пароль повинен містити мінімум 6 символів',
+
+    // Адмін панель - Продукти
+    'admin_panel': 'Адмін',
+    'admin_products_title': 'Управління продуктами',
+    'admin_products_desc': 'Додавайте, редагуйте та видаляйте цифрові продукти в магазині.',
+    'add_product': 'Додати продукт',
+    'new_product': 'Новий продукт',
+    'edit_product': 'Редагувати продукт',
+    'product_name': 'Назва продукту',
+    'product_slug': 'Slug (унікальний ідентифікатор)',
+    'product_type_select': 'Тип продукту',
+    'type_quote_pack': 'Пакет цитат',
+    'type_theme': 'Тема оформлення',
+    'type_journal_template': 'Шаблон щоденника',
+    'type_habit_course': 'Курс звичок',
+    'product_price': 'Ціна',
+    'product_description': 'Опис',
+    'product_active': 'Активний',
+    'no_products_yet': 'Продуктів ще немає.',
+    'confirm_delete_product': 'Видалити цей продукт? (Він буде деактивований)',
+    'product_not_found': 'Продукт не знайдено',
+
+    // Адмін панель - Замовлення
+    'admin_orders_title': 'Управління замовленнями',
+    'admin_orders_desc': 'Переглядайте замовлення користувачів та оновлюйте їх статус.',
+    'order_id': 'ID замовлення',
+    'user': 'Користувач',
+    'status': 'Статус',
+    'total': 'Сума',
+    'created': 'Створено',
+    'created_at': 'Дата створення',
+    'actions': 'Дії',
+    'order_details': 'Деталі замовлення',
+    'items': 'Товари',
+    'quantity': 'Кількість',
+    'no_items': 'Немає товарів',
+    'no_orders_yet': 'Замовлень ще немає.',
+    'order_status_new': 'Нове',
+    'order_status_processing': 'В обробці',
+    'order_status_completed': 'Завершено',
+    'order_status_canceled': 'Скасовано',
+    'confirm_delete_order': 'Видалити це замовлення?',
+    'view': 'Переглянути',
+    'close': 'Закрити',
+
+    // Адмін дашборд
+    'admin_dashboard_title': 'Адмін-панель',
+    'admin_dashboard_desc': 'Ласкаво просимо! Оберіть розділ для керування контентом та замовленнями.',
+    'admin_dashboard_products_title': 'Продукти магазину',
+    'admin_dashboard_products_desc': 'Додавайте нові цифрові ресурси, редагуйте опис та керуйте активністю.',
+    'admin_dashboard_orders_title': 'Замовлення',
+    'admin_dashboard_orders_desc': 'Переглядайте покупки користувачів, оновлюйте статуси та відстежуйте історію.',
+    'admin_dashboard_users_title': 'Користувачі',
+    'admin_dashboard_users_desc': 'Керуйте зареєстрованими користувачами та їхніми правами доступу.',
+    'admin_dashboard_feedback_title': 'Зворотний зв’язок',
+    'admin_dashboard_feedback_desc': 'Читайте відгуки спільноти DailyMood та швидко реагуйте на важливі повідомлення.',
+    'admin_users_title': 'Керування користувачами',
+    'admin_users_desc': 'Призначайте або забирайте адмін-права та очищуйте список користувачів.',
+    'admin_users_empty': 'Наразі немає інших зареєстрованих користувачів.',
+    'admin_role_admin': 'Адміністратор',
+    'admin_role_user': 'Користувач',
+    'admin_make_admin': 'Надати адмін-права',
+    'admin_remove_admin': 'Забрати адмін-права',
+    'admin_make_premium': 'Надати преміум',
+    'admin_remove_premium': 'Зняти преміум',
+    'admin_delete_user': 'Видалити користувача',
+    'admin_confirm_delete_user': 'Видалити цього користувача?',
+    'admin_primary_label': 'Головний адміністратор',
+
+    // Профіль
+    'profile_title': 'Мій профіль',
+    'profile_intro': 'Перегляньте інформацію про свій акаунт, роль та історію замовлень.',
+    'profile_account_section': 'Дані акаунту',
+    'profile_overview_email': 'Email',
+    'profile_role': 'Роль',
+    'profile_role_admin': 'Адміністратор',
+    'profile_role_user': 'Користувач',
+    'profile_avatar_section': 'Аватар',
+    'profile_avatar_hint': 'Обери фон чи емодзі для кнопки профілю.',
+    'profile_avatar_toggle': 'Відкрити вибір аватару',
+    'profile_avatar_picker_label': 'Список аватарів',
+    'profile_avatar_saving': 'Зберігаємо аватар...',
+    'profile_avatar_save_success': 'Аватар оновлено!',
+    'profile_avatar_save_error': 'Не вдалося оновити аватар.',
+    'profile_avatar_not_logged': 'Увійдіть, щоб змінити аватар.',
+    'profile_avatar_unavailable': 'Поки що немає доступних аватарів.',
+    'profile_premium_badge': 'Преміум‑користувач',
+
+    'role': 'Роль',
+    'profile_registered_at': 'Зареєстровано',
+    'profile_open_admin': 'Відкрити адмін-панель',
+    'profile_orders_section': 'Замовлення',
+    'profile_orders_caption': 'Останні покупки та їхній статус.',
+    'profile_go_to_store': 'До магазину',
+    'profile_no_orders': 'Поки що немає замовлень.',
+    'profile_total_orders': 'Усього замовлень',
+    'profile_completed_orders': 'Завершено',
+    'profile_completed_hint': 'успішно доставлено',
+    'profile_total_spent': 'Сума покупок',
+    'profile_total_spent_hint': 'грн',
+    'profile_orders_recent': 'за весь час',
+    'avatar_label_none': 'Без аватарки',
+    'avatar_label_cat': 'Кіт',
+    'avatar_label_dog': 'Собака',
+    'avatar_label_bunny': 'Кролик',
+    'avatar_label_bear': 'Ведмедик',
+    'avatar_label_koala': 'Коала',
+    'avatar_label_bee': 'Бджілка',
+    'avatar_label_penguin': 'Пінгвін',
+    'avatar_label_frog': 'Жабка',
+    'avatar_label_mushroom': 'Грибочок',
+    'avatar_label_star': 'Зірка',
+    'avatar_label_cactus': 'Кактус',
+    'avatar_label_unicorn': 'Єдиноріг',
+    'avatar_label_dragon': 'Дракон',
+    'avatar_label_koi': 'Коропик',
+    'avatar_label_phoenix': 'Фенікс',
+    'avatar_label_crown': 'Корона',
+    'avatar_label_crystal': 'Кристал',
+    'avatar_label_moon': 'Місяць',
+    'avatar_label_butterfly': 'Метелик',
+    'premium_only': 'Тільки преміум',
+    'premium_required_message': 'Для використання цього аватара потрібен преміум-акаунт',
+
+    // Цілі та сторінка "Про нас"
     'goals_page_title': 'Мої цілі та звички',
     'habits_title': 'Щоденні звички',
     'new_habit_placeholder': 'Нова звичка...',
@@ -79,28 +231,83 @@ const translations_uk = {
     'new_goal_placeholder': 'Нова ціль...',
     'my_progress': 'Мій прогрес',
     'about_title': 'Про нас',
-    'about_description': 'DailyMood — простий інструмент для відстеження настрою й звичок. Ми допомагаємо помічати закономірності та підтримувати щоденну рефлексію.'
+    'about_description': 'DailyMood — простий інструмент для відстеження настрою й звичок. Ми допомагаємо помічати закономірності та підтримувати щоденну рефлексію.',
+
+    // Досягнення та додаткові підписи
+    'ach_days_suffix': 'днів',
+    'ach_longest_desc': 'Найдовша серія повних днів',
+    'ach_days_with_habits': 'днів з усіма звичками',
+    'ach_full_days_desc': 'Повні дні за останні 30 днів',
+    'ach_goals_done': 'цілей виконано',
+    'ach_completed_goals_desc': 'Місячні цілі виконано',
+    'no_habits_calendar': 'Ще немає звичок — додайте першу, щоб почати відстеження',
+    'all_habits': 'Всі звички',
+    'all_goals': 'Всі цілі',
+    'habit_singular': 'звичка',
+    'habit_plural': 'звички',
+    'goal_singular': 'ціль',
+    'goal_plural': 'цілі',
+    'month_names': ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'],
+    'weekday_short': ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'],
+    'confirm_delete_entry': 'Ви справді хочете видалити цей запис? Цю дію не можна скасувати.',
+    'mood_chart_label': 'Настрій',
+    'no_data': 'Немає даних',
+
+    // Розширені переклади сторінки "Про нас"
+    'about_mission_title': 'Наша місія',
+    'about_mission_text': 'Сприяти психологічній стійкості через щоденні дрібні кроки: від запису настрою до формування корисних звичок. Ми віримо, що усвідомлене ставлення до свого емоційного стану — це шлях до кращого розуміння себе та гармонійного життя.',
+    'about_features_title': 'Основні можливості',
+    'about_feature_mood_tracking_title': 'Відстеження настрою',
+    'about_feature_mood_tracking_desc': 'Зручний щоденник для запису вашого емоційного стану, активностей та думок. Візуалізація змін настрою допомагає краще розуміти себе.',
+    'about_feature_stats_title': 'Статистика та аналіз',
+    'about_feature_stats_desc': 'Детальні графіки та звіти допомагають відслідковувати тенденції вашого настрою та знаходити фактори, які впливають на самопочуття.',
+    'about_feature_quotes_title': 'Щоденні цитати',
+    'about_feature_quotes_desc': 'Колекція надихаючих цитат для мотивації та підтримки. Можливість зберігати улюблені цитати у власній колекції.',
+    'about_feature_habits_title': 'Відстеження звичок',
+    'about_feature_habits_desc': 'Інструменти для формування та підтримки корисних звичок. Відмічайте прогрес та отримуйте візуальне підтвердження досягнень.',
+    'about_special_title': 'Особливості проєкту',
+    'about_special_list_ux': 'Зручний та інтуїтивно зрозумілий інтерфейс',
+    'about_special_list_theme': 'Підтримка світлої та темної тем',
+    'about_special_list_privacy': 'Захист приватності — дані локально',
+    'about_special_list_no_ads': 'Без нав’язливої реклами чи прихованих платежів',
+    'about_special_list_updates': 'Постійні оновлення та покращення',
+    'about_roadmap_title': 'Плани розвитку',
+    'about_roadmap_intro': 'Ми постійно вдосконалюємо DailyMood. У майбутньому плануємо додати:',
+    'about_roadmap_list_analytics': 'Розширену аналітику настрою та звичок',
+    'about_roadmap_list_export': 'Експорт даних у різні формати',
+    'about_roadmap_list_calendar': 'Інтеграцію з календарем',
+    'about_roadmap_list_new_categories': 'Нові категорії активностей та метрик',
+    'about_contact_title': 'Контакти та зворотний зв’язок',
+    'about_contact_p1': 'Проєкт розробляється як освітній/демонстраційний — для зворотного зв’язку чи внесків див. репозиторій на GitHub.',
+    'about_contact_p2': 'Ми раді пропозиціям щодо покращень чи нових функцій. Якщо маєте ідею або знайшли помилку — створіть issue у репозиторії.',
+    'recent_feedback_title': 'Останні відгуки',
+    'no_feedback_yet': 'Ще немає відгуків',
+    'feedback_rating': 'Оцінка',
+
+    // Магазин
+    'store_title': 'Магазин',
+    'store_desc': 'Покращте свій досвід з DailyMood завдяки нашим цифровим продуктам.',
+    'buy_now': 'Купити',
+    'purchase_success': 'Покупка успішна! Замовлення',
+    'purchase_failed': 'Помилка покупки',
+    'no_products_available': 'Продуктів наразі немає.',
+
+    // Загальні
+    'save': 'Зберегти',
+    'cancel': 'Скасувати',
+    'edit': 'Редагувати',
+    'refresh': 'Оновити',
+    'loading': 'Завантаження...',
+    'load_failed': 'Не вдалося завантажити дані.',
+    'save_failed': 'Не вдалося зберегти.',
+    'delete_failed': 'Не вдалося видалити.',
+    'update_failed': 'Не вдалося оновити.',
+    'id': 'ID',
+    'name': 'Назва',
+    'type': 'Тип',
+    'price': 'Ціна',
+    'active': 'Активний',
+    'inactive': 'Неактивний',
+    'open_section': 'Відкрити'
 };
 
-// Achievement-related translations
-translations_uk['ach_days_suffix'] = 'днів';
-translations_uk['ach_longest_desc'] = 'Найдовша серія повних днів';
-translations_uk['ach_days_with_habits'] = 'днів з усіма звичками';
-translations_uk['ach_full_days_desc'] = 'Повні дні за останні 30 днів';
-translations_uk['ach_goals_done'] = 'цілей виконано';
-translations_uk['ach_completed_goals_desc'] = 'Місячні цілі виконано';
-
-// No-habits calendar placeholder
-translations_uk['no_habits_calendar'] = 'Ще немає звичок — додайте першу, щоб почати відстеження';
-
-// Labels for counts and lists
-translations_uk['all_habits'] = 'Всі звички';
-translations_uk['all_goals'] = 'Всі цілі';
-translations_uk['habit_singular'] = 'звичка';
-translations_uk['habit_plural'] = 'звички';
-translations_uk['goal_singular'] = 'ціль';
-translations_uk['goal_plural'] = 'цілі';
-
-// Month and weekday names (used by client-side calendars)
-translations_uk['month_names'] = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
-translations_uk['weekday_short'] = ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];

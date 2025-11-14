@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Вхід — DailyMood{% endblock %}
+
+{% block extra_head %}
+<style>
+  .auth-form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #e6eef8;
+    font-size: 1rem;
+    transition: all 0.18s ease;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  .auth-form-input:focus {
+    outline: none;
+    border-color: rgba(99,102,241,0.6);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12), inset 0 2px 6px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+  
+  .auth-form-input::placeholder {
+    color: rgba(255,255,255,0.4);
+  }
+  
+  html.dark .auth-form-input {
+    background: rgba(2,6,23,0.6);
+    border-color: rgba(79,172,254,0.15);
+    color: #e6eef8;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+  }
+  
+  html:not(.dark) .auth-form-input {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(2,6,23,0.12);
+    color: #0f172a;
+    box-shadow: inset 0 1px 2px rgba(2,6,23,0.1);
+  }
+  
+  html:not(.dark) .auth-form-input::placeholder {
+    color: rgba(15,23,42,0.4);
+  }
+  
+  .auth-form-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <section class="page-banner">
+    <h1>Вхід</h1>
+  </section>
+
+  <section class="theme-panel" style="max-width:560px; margin:0 auto;">
+    <form id="loginForm" style="display:flex; flex-direction:column; gap:16px;">
+      <label>
+        <div class="auth-form-label">Email</div>
+        <input type="email" id="loginEmail" class="auth-form-input" required placeholder="you@example.com" />
+      </label>
+      <label>
+        <div class="auth-form-label">Пароль</div>
+        <input type="password" id="loginPassword" class="auth-form-input" required placeholder="••••••" />
+      </label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="submit" class="btn">Увійти</button>
+        <a href="{{ url_for('register') }}" class="btn secondary">Реєстрація</a>
+      </div>
+      <div id="loginStatus" class="muted" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function(){
+    const form = document.getElementById('loginForm');
+    const email = document.getElementById('loginEmail');
+    const pass = document.getElementById('loginPassword');
+    const statusEl = document.getElementById('loginStatus');
+
+    function setStatus(msg, isError){
+      statusEl.textContent = msg || '';
+      statusEl.style.color = isError ? '#ef4444' : '';
+    }
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      setStatus('Виконуємо вхід…');
+      try {
+        const r = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: email.value.trim(), password: pass.value })
+        });
+        const payload = await r.json().catch(()=>null);
+        if(!r.ok){
+          setStatus((payload && payload.message) || 'Помилка входу', true);
+          return;
+        }
+        setStatus('Успішно! Перехід…');
+        const next = new URLSearchParams(location.search).get('next') || '/';
+        location.href = next;
+      } catch(err){
+        setStatus('Не вдалося виконати вхід', true);
+      }
+    });
+  })();
+</script>
+{% endblock %}

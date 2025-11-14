@@ -41,6 +41,14 @@ function changeLanguage(lang) {
                 }
             }
         });
+
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+                const key = element.getAttribute('data-i18n-aria-label');
+                const translation = currentLanguage === 'uk' ? translations_uk[key] : translations_en[key];
+                if (translation) {
+                    element.setAttribute('aria-label', translation);
+                }
+            });
         
         document.body.style.opacity = '1';
     }, 150);
@@ -64,6 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     element.textContent = translation;
                 }
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+            const key = element.getAttribute('data-i18n-aria-label');
+            const translation = currentLanguage === 'uk' ? translations_uk[key] : translations_en[key];
+            if (translation) {
+                element.setAttribute('aria-label', translation);
             }
         });
 

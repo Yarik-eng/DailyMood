@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}Оформлення замовлення — DailyMood{% endblock %}
+
+{% block extra_head %}
+<style>
+  .checkout-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+  .checkout-grid { display: grid; grid-template-columns: 1fr 400px; gap: 24px; align-items: start; }
+  .payment-method-card { 
+    padding: 16px 20px; 
+    border-radius: 12px; 
+    border: 2px solid rgba(148,163,184,0.18); 
+    background: rgba(255,255,255,0.03); 
+    cursor: pointer; 
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .payment-method-card:hover { border-color: rgba(99,102,241,0.4); transform: translateY(-2px); }
+  .payment-method-card.selected { 
+    border-color: var(--profile-accent, #6366f1); 
+    background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.06)); 
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+  }
+  .payment-method-icon { font-size: 2rem; }
+  .payment-method-info { flex: 1; }
+  .payment-method-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+  .payment-method-desc { font-size: 0.9rem; opacity: 0.75; }
+  .card-input-group { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+  .form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: inherit;
+    font-size: 0.95rem;
+    transition: all 0.18s ease;
+    box-shadow: inset 0 1px 4px rgba(2,6,23,0.25);
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: rgba(99,102,241,0.6);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+  }
+  html.dark .form-input {
+    background: rgba(2,6,23,0.45);
+    border-color: rgba(79,172,254,0.10);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+  }
+  html:not(.dark) .form-input {
+    background: rgba(255,255,255,0.9);
+    border-color: rgba(2,6,23,0.06);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+  }
+  .order-summary {
+    padding: 24px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(148,163,184,0.18);
+    position: sticky;
+    top: 20px;
+  }
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(148,163,184,0.12);
+  }
+  .summary-total {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 2px solid rgba(99,102,241,0.3);
+  }
+  
+  @media (max-width: 900px) {
+    .checkout-grid { grid-template-columns: 1fr; }
+    .order-summary { position: static; }
+    .card-input-group { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="checkout-container">
+  <div class="page-banner" style="margin-bottom: 32px;">
+    <h1 data-i18n="checkout_title">Оформлення замовлення</h1>
+  </div>
+
+  <div class="checkout-grid">
+    <!-- Форма оплати -->
+    <section class="theme-panel" style="padding: 28px;">
+      <div style="margin-bottom: 24px;">
+        <h2 class="text-xl font-bold" data-i18n="checkout_payment_method">Спосіб оплати</h2>
+        <p class="muted" style="margin-top: 6px;" data-i18n="checkout_payment_desc">Оберіть зручний спосіб оплати</p>
+      </div>
+
+      <!-- Методи оплати -->
+      <div id="paymentMethods" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+        <p class="muted" data-i18n="loading">Завантаження...</p>
+      </div>
+
+      <!-- Форма деталей картки -->
+      <div id="cardDetailsForm" style="display: none; margin-top: 24px;">
+        <h3 class="text-lg font-semibold mb-4" data-i18n="checkout_card_details">Дані картки</h3>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label class="form-label" data-i18n="checkout_card_number">Номер картки</label>
+            <input type="text" id="cardNumber" class="form-input" placeholder="1234 5678 9012 3456" maxlength="19">
+          </div>
+          <div class="card-input-group">
+            <div>
+              <label class="form-label" data-i18n="checkout_card_holder">Власник картки</label>
+              <input type="text" id="cardHolder" class="form-input" placeholder="TARAS SHEVCHENKO">
+            </div>
+            <div>
+              <label class="form-label" data-i18n="checkout_card_expiry">Термін</label>
+              <input type="text" id="cardExpiry" class="form-input" placeholder="MM/YY" maxlength="5">
+            </div>
+            <div>
+              <label class="form-label" data-i18n="checkout_card_cvv">CVV</label>
+              <input type="text" id="cardCVV" class="form-input" placeholder="123" maxlength="3">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопка оплати -->
+      <div style="margin-top: 28px; display: flex; gap: 12px;">
+        <button id="payBtn" class="btn" style="flex: 1;" disabled data-i18n="checkout_pay_now">Оплатити</button>
+        <a href="/store" class="btn secondary" data-i18n="cancel">Скасувати</a>
+      </div>
+
+      <div id="paymentResult" style="margin-top: 16px; display: none;"></div>
+    </section>
+
+    <!-- Підсумок замовлення -->
+    <aside class="order-summary">
+      <h3 class="text-xl font-bold mb-4" data-i18n="checkout_order_summary">Підсумок замовлення</h3>
+      
+      <div id="orderItems" style="margin-bottom: 16px;">
+        <p class="muted" data-i18n="loading">Завантаження...</p>
+      </div>
+
+      <div class="summary-item">
+        <span data-i18n="checkout_subtotal">Сума:</span>
+        <strong id="subtotalAmount">0.00 ₴</strong>
+      </div>
+      
+      <div class="summary-item">
+        <span data-i18n="checkout_delivery">Доставка:</span>
+        <strong id="deliveryAmount" data-i18n="checkout_free">Безкоштовно</strong>
+      </div>
+
+      <div class="summary-item summary-total">
+        <span data-i18n="checkout_total">Разом:</span>
+        <strong id="totalAmount">0.00 ₴</strong>
+      </div>
+
+      <div style="margin-top: 20px; padding: 14px; border-radius: 10px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="font-size: 1.2rem;">🔒</span>
+          <strong data-i18n="checkout_secure">Безпечна оплата</strong>
+        </div>
+        <p style="font-size: 0.85rem; opacity: 0.85; margin: 0;" data-i18n="checkout_secure_desc">
+          Ваші дані захищені SSL-шифруванням
+        </p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  function t(key){ try { return (typeof currentLanguage!=='undefined' && currentLanguage==='uk') ? (translations_uk[key]||key) : (translations_en[key]||key); } catch(e){ return key; } }
+
+  const paymentMethodsEl = document.getElementById('paymentMethods');
+  const cardDetailsForm = document.getElementById('cardDetailsForm');
+  const orderItemsEl = document.getElementById('orderItems');
+  const subtotalEl = document.getElementById('subtotalAmount');
+  const totalEl = document.getElementById('totalAmount');
+  const payBtn = document.getElementById('payBtn');
+  const paymentResultEl = document.getElementById('paymentResult');
+  
+  const cardNumberInput = document.getElementById('cardNumber');
+  const cardHolderInput = document.getElementById('cardHolder');
+  const cardExpiryInput = document.getElementById('cardExpiry');
+  const cardCVVInput = document.getElementById('cardCVV');
+
+  let selectedMethod = null;
+  let currentOrder = null;
+  let paymentMethods = [];
+
+  // Форматування номера картки
+  cardNumberInput?.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+    let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+    e.target.value = formatted;
+  });
+
+  // Форматування терміну дії
+  cardExpiryInput?.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if(value.length >= 2) {
+      value = value.slice(0,2) + '/' + value.slice(2,4);
+    }
+    e.target.value = value;
+  });
+
+  // Тільки цифри для CVV
+  cardCVVInput?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+  });
+
+  async function loadPaymentMethods(){
+    try {
+      const r = await fetch('/api/payments/methods', { credentials: 'include' });
+      if(!r.ok) throw new Error('Failed to load');
+      const data = await r.json();
+      paymentMethods = data.methods || [];
+      renderPaymentMethods();
+    } catch(err){
+      console.error('Failed to load payment methods', err);
+      paymentMethodsEl.innerHTML = '<p style="color:#ef4444;">'+t('load_failed')+'</p>';
+    }
+  }
+
+  function renderPaymentMethods(){
+    if(paymentMethods.length === 0){
+      paymentMethodsEl.innerHTML = '<p class="muted">'+t('no_payment_methods')+'</p>';
+      return;
+    }
+
+    paymentMethodsEl.innerHTML = paymentMethods.map(method => `
+      <div class="payment-method-card" data-method="${method.id}">
+        <div class="payment-method-icon">${method.icon}</div>
+        <div class="payment-method-info">
+          <div class="payment-method-name">${method.name}</div>
+          <div class="payment-method-desc">${method.description}</div>
+        </div>
+        <div class="payment-method-check" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(148,163,184,0.4);"></div>
+      </div>
+    `).join('');
+
+    // Обробка вибору методу
+    document.querySelectorAll('.payment-method-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.payment-method-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedMethod = card.getAttribute('data-method');
+        
+        // Показати форму картки якщо вибрано картку
+        if(selectedMethod === 'card'){
+          cardDetailsForm.style.display = 'block';
+        } else {
+          cardDetailsForm.style.display = 'none';
+        }
+        
+        payBtn.disabled = false;
+      });
+    });
+  }
+
+  async function loadOrder(){
+    // Отримуємо ID останнього замовлення з URL або створюємо нове
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    
+    if(!orderId){
+      // Немає замовлення - редірект в магазин
+      window.location.href = '/store';
+      return;
+    }
+
+    try {
+      const r = await fetch(`/api/orders/${orderId}`, { credentials: 'include' });
+      if(!r.ok) throw new Error('Order not found');
+      const data = await r.json();
+      currentOrder = data.order;
+      renderOrderSummary();
+    } catch(err){
+      console.error('Failed to load order', err);
+      orderItemsEl.innerHTML = '<p style="color:#ef4444;">'+t('load_failed')+'</p>';
+      setTimeout(() => window.location.href = '/store', 2000);
+    }
+  }
+
+  function renderOrderSummary(){
+    if(!currentOrder || !currentOrder.items || currentOrder.items.length === 0){
+      orderItemsEl.innerHTML = '<p class="muted">'+t('no_items')+'</p>';
+      return;
+    }
+
+    orderItemsEl.innerHTML = currentOrder.items.map(item => `
+      <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(148,163,184,0.12);">
+        <div>
+          <div style="font-weight: 600;">${item.product_name}</div>
+          <div style="font-size: 0.9rem; opacity: 0.75;">${item.quantity} × ${item.unit_price.toFixed(2)} ₴</div>
+        </div>
+        <strong>${item.subtotal.toFixed(2)} ₴</strong>
+      </div>
+    `).join('');
+
+    subtotalEl.textContent = currentOrder.total_amount.toFixed(2) + ' ₴';
+    totalEl.textContent = currentOrder.total_amount.toFixed(2) + ' ₴';
+  }
+
+  async function processPayment(){
+    if(!selectedMethod || !currentOrder){
+      alert(t('select_payment_method'));
+      return;
+    }
+
+    // Валідація для картки
+    if(selectedMethod === 'card'){
+      const cardNum = cardNumberInput.value.replace(/\s/g, '');
+      const holder = cardHolderInput.value.trim();
+      const expiry = cardExpiryInput.value.trim();
+      const cvv = cardCVVInput.value.trim();
+
+      if(!cardNum || cardNum.length < 13){
+        alert(t('invalid_card_number'));
+        return;
+      }
+      if(!holder){
+        alert(t('invalid_card_holder'));
+        return;
+      }
+      if(!expiry || expiry.length !== 5){
+        alert(t('invalid_card_expiry'));
+        return;
+      }
+      if(!cvv || cvv.length < 3){
+        alert(t('invalid_card_cvv'));
+        return;
+      }
+    }
+
+    payBtn.disabled = true;
+    payBtn.textContent = t('processing') || 'Обробка...';
+
+    try {
+      const payload = {
+        order_id: currentOrder.id,
+        payment_method: selectedMethod
+      };
+
+      if(selectedMethod === 'card'){
+        payload.card_number = cardNumberInput.value.replace(/\s/g, '');
+        payload.card_brand = detectCardBrand(payload.card_number);
+      }
+
+      const r = await fetch('/api/payments', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      const data = await r.json();
+
+      if(!r.ok){
+        throw new Error(data.message || 'Payment failed');
+      }
+
+      // Успіх!
+      paymentResultEl.style.display = 'block';
+      paymentResultEl.innerHTML = `
+        <div style="padding: 16px; border-radius: 12px; background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <strong style="font-size: 1.1rem;">${t('payment_success')}</strong>
+          </div>
+          <p style="margin: 0; opacity: 0.9;">${t('payment_success_desc')}</p>
+        </div>
+      `;
+
+      // Редірект на профіль через 2 секунди
+      setTimeout(() => {
+        window.location.href = '/profile';
+      }, 2000);
+
+    } catch(err){
+      console.error('Payment error', err);
+      paymentResultEl.style.display = 'block';
+      paymentResultEl.innerHTML = `
+        <div style="padding: 16px; border-radius: 12px; background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 1.5rem;">❌</span>
+            <strong style="font-size: 1.1rem;">${t('payment_failed')}</strong>
+          </div>
+          <p style="margin: 0; opacity: 0.9;">${err.message}</p>
+        </div>
+      `;
+      payBtn.disabled = false;
+      payBtn.textContent = t('checkout_pay_now');
+    }
+  }
+
+  function detectCardBrand(cardNumber){
+    const num = cardNumber.replace(/\s/g, '');
+    if(/^4/.test(num)) return 'Visa';
+    if(/^5[1-5]/.test(num)) return 'Mastercard';
+    if(/^3[47]/.test(num)) return 'American Express';
+    return 'Unknown';
+  }
+
+  payBtn.addEventListener('click', processPayment);
+  window.addEventListener('languageChanged', () => {
+    renderPaymentMethods();
+    renderOrderSummary();
+  });
+
+  loadPaymentMethods();
+  loadOrder();
+})();
+</script>
+{% endblock %}

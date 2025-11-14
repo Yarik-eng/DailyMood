@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DailyMood{% endblock %}</title>
+    
+    <!-- Запобігання спалаху білого екрану (FOUC) - застосувати тему до рендерингу -->
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          }
+          // Застосувати профіль-тему (акцент/сяйво) ще до рендеру, щоб не блимало
+          const profileTheme = localStorage.getItem('profileTheme');
+          if (profileTheme) {
+            document.documentElement.setAttribute('data-profile-theme', profileTheme);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    
     <!-- Tell Tailwind to use class-based dark mode, then load the CDN -->
     <script>
       window.tailwind = window.tailwind || {};
@@ -16,6 +34,297 @@
     <script src="{{ url_for('static', filename='translations/en_fixed.js') }}?v={{ static_version }}"></script>
     <script src="{{ url_for('static', filename='translations/quotes.js') }}?v={{ static_version }}"></script>
     <script src="{{ url_for('static', filename='js/i18n_fixed.js') }}?v={{ static_version }}"></script>
+    <style>
+      /* Профіль-тема: акцентні кольори та сяйво, зберігаються незалежно від світлої/темної теми */
+      :root{
+        --profile-accent:#6366f1; /* індиго (дефолт) */
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(99,102,241,0.35);
+      }
+      html[data-profile-theme="default"]{
+        --profile-accent:#6366f1;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(99,102,241,0.35);
+      }
+      html[data-profile-theme="pink"]{
+        --profile-accent:#ec4899;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(236,72,153,0.35);
+      }
+      html[data-profile-theme="green"]{
+        --profile-accent:#10b981;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(16,185,129,0.35);
+      }
+      html[data-profile-theme="rose"]{
+        --profile-accent:#f43f5e;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(244,63,94,0.35);
+      }
+      html[data-profile-theme="orange"]{
+        --profile-accent:#f97316;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(249,115,22,0.35);
+      }
+      html[data-profile-theme="mint"]{
+        --profile-accent:#06b6d4;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(6,182,212,0.35);
+      }
+      html[data-profile-theme="slate"]{
+        --profile-accent:#64748b;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(100,116,139,0.35);
+      }
+      /* Преміум-теми */
+      html[data-profile-theme="purple"]{
+        --profile-accent:#a855f7;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(168,85,247,0.35);
+      }
+      html[data-profile-theme="teal"]{
+        --profile-accent:#14b8a6;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(20,184,166,0.35);
+      }
+      html[data-profile-theme="sunset"]{
+        --profile-accent:#f97316;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(249,115,22,0.45);
+      }
+      html[data-profile-theme="galaxy"]{
+        --profile-accent:#8b5cf6;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(139,92,246,0.45);
+      }
+      html[data-profile-theme="forest"]{
+        --profile-accent:#065f46;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(6,95,70,0.35);
+      }
+      html[data-profile-theme="crimson"]{
+        --profile-accent:#dc2626;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(220,38,38,0.4);
+      }
+      html[data-profile-theme="deepsea"]{
+        --profile-accent:#1e3a8a;
+        --profile-accent-contrast:#ffffff;
+        --profile-glow:rgba(30,58,138,0.4);
+      }
+      html[data-profile-theme="gold"]{
+        --profile-accent:#eab308;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(234,179,8,0.45);
+      }
+      html[data-profile-theme="lavender"]{
+        --profile-accent:#c084fc;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(192,132,252,0.4);
+      }
+      html[data-profile-theme="coral"]{
+        --profile-accent:#fb7185;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(251,113,133,0.4);
+      }
+      html[data-profile-theme="amber"]{
+        --profile-accent:#f59e0b;
+        --profile-accent-contrast:#0b1120;
+        --profile-glow:rgba(245,158,11,0.35);
+      }
+
+      body.profile-panel-open{overflow:hidden;}
+      .profile-panel{position:fixed;inset:0;display:none;z-index:10000;}
+      .profile-panel.open{display:flex;}
+      .profile-panel__overlay{flex:1;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);}
+      .profile-panel__drawer{width:400px;max-width:100%;background:var(--bg-panel,#0f172a);color:inherit;box-shadow:-24px 0 60px rgba(15,23,42,0.45);padding:28px 24px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;transform:translateX(12px);opacity:0;transition:transform 260ms cubic-bezier(.22,.9,.3,1),opacity 220ms ease;}
+      .profile-panel__header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;}
+  .profile-avatar-wrapper{position:relative;display:inline-flex;}
+  .profile-avatar{width:84px;height:84px;cursor:pointer;border-radius:999px;}
+  .profile-avatar:focus-visible{outline:2px solid rgba(99,102,241,0.6);outline-offset:3px;}
+  .avatar-swatch{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;line-height:1;border-radius:999px;color:#fff;background:linear-gradient(135deg,#6366f1,#8b5cf6);transition:transform 0.2s ease, box-shadow 0.2s ease;}
+  .profile-avatar.avatar-swatch{font-size:2rem;}
+  .avatar-swatch--none{background:rgba(148,163,184,0.25);color:#0f172a;}
+  /* Free kawaii avatars */
+  .avatar-swatch--cat{background:linear-gradient(135deg,#fde68a,#fbbf24);}
+  .avatar-swatch--dog{background:linear-gradient(135deg,#fed7aa,#fdba74);}
+  .avatar-swatch--bunny{background:linear-gradient(135deg,#fef3c7,#fde68a);}
+  .avatar-swatch--bear{background:linear-gradient(135deg,#fef3c7,#fde68a);}
+  .avatar-swatch--koala{background:linear-gradient(135deg,#e5e7eb,#cbd5e1);}
+  .avatar-swatch--bee{background:linear-gradient(135deg,#fef08a,#fde047);}
+  .avatar-swatch--penguin{background:linear-gradient(135deg,#dbeafe,#93c5fd);}
+  .avatar-swatch--chicken{background:linear-gradient(135deg,#fef3c7,#fde68a);}
+  .avatar-swatch--pig{background:linear-gradient(135deg,#fbcfe8,#f9a8d4);}
+  .avatar-swatch--seal{background:linear-gradient(135deg,#e0f2fe,#bae6fd);}
+  .avatar-swatch--frog{background:linear-gradient(135deg,#d1fae5,#86efac);}
+  /* Premium magical creatures */
+  .avatar-swatch--unicorn{background:linear-gradient(135deg,#fae8ff,#f5d0fe);box-shadow:inset 0 0 0 1px rgba(192,132,252,0.3);}
+  .avatar-swatch--dragon{background:linear-gradient(135deg,#312e81,#4c1d95);box-shadow:inset 0 0 0 1px rgba(139,92,246,0.4);}
+  .avatar-swatch--koi{background:linear-gradient(135deg,#fed7aa,#fdba74);box-shadow:inset 0 0 0 1px rgba(249,115,22,0.3);}
+  .avatar-swatch--phoenix{background:linear-gradient(135deg,#7c2d12,#dc2626);box-shadow:inset 0 2px 8px rgba(251,146,60,0.4);}
+  .avatar-swatch--crown{background:linear-gradient(135deg,#fef3c7,#fbbf24);box-shadow:inset 0 2px 8px rgba(217,119,6,0.3);}
+  .avatar-swatch--crystal{background:linear-gradient(135deg,#e0e7ff,#c7d2fe);box-shadow:inset 0 2px 8px rgba(99,102,241,0.3);}
+  .avatar-swatch--moon{background:linear-gradient(135deg,#1e1b4b,#3730a3);box-shadow:inset 0 2px 8px rgba(165,180,252,0.4);}
+  .avatar-swatch--butterfly{background:linear-gradient(135deg,#f3e8ff,#fae8ff);box-shadow:inset 0 2px 8px rgba(192,132,252,0.3);}
+  .profile-trigger{border:none;background:transparent;padding:6px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s ease, box-shadow 0.2s ease;}
+  .profile-trigger[hidden]{display:none;}
+  .profile-trigger:focus-visible{outline:2px solid rgba(99,102,241,0.6);outline-offset:2px;}
+  .profile-trigger:hover .avatar-swatch{transform:scale(1.05);}
+  .premium-indicator{position:absolute;bottom:-2px;right:-2px;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:linear-gradient(135deg,#fbbf24,#ec4899);color:#0b1120;font-size:0.75rem;font-weight:700;box-shadow:0 4px 12px rgba(236,72,153,0.35);}
+  .premium-indicator[hidden]{display:none;}
+  .premium-indicator__label{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden;white-space:nowrap;}
+  /* Enlarged header avatar */
+  .profile-trigger .avatar-swatch{width:40px;height:40px;font-size:2rem;}
+  .profile-trigger .premium-indicator{width:16px;height:16px;font-size:0.65rem;bottom:-2px;right:-2px;box-shadow:0 3px 10px rgba(236,72,153,0.35);}
+  .avatar-picker-overlay{position:absolute;top:50%;right:440px;left:auto;transform:translateY(-50%);display:none;flex-direction:column;gap:16px;padding:24px;border-radius:18px;background:rgba(15,23,42,0.82);box-shadow:0 25px 80px rgba(15,23,42,0.55);backdrop-filter:blur(12px);z-index:2;max-height:calc(100% - 80px);max-width:420px;width:clamp(260px,32vw,420px);overflow-y:auto;}
+  .avatar-picker-overlay:not([hidden]){display:flex;}
+  .avatar-picker-overlay__header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .avatar-picker-overlay__close{align-self:flex-start;padding:6px 12px;min-width:40px;}
+  .profile-avatar-section{display:flex;flex-direction:column;gap:16px;}
+  .profile-avatar-section__intro{display:flex;flex-direction:column;gap:4px;}
+  .avatar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+  .avatar-option{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(148,163,184,0.25);border-radius:14px;background:rgba(15,23,42,0.25);color:inherit;cursor:pointer;transition:border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;position:relative;}
+  /* Reserve space so the badge doesn't feel cramped */
+  .avatar-option{padding-right:42px;}
+  .avatar-option:hover{transform:translateY(-1px);}
+  .avatar-option[aria-checked="true"]{border-color:rgba(99,102,241,0.6);box-shadow:0 0 0 3px rgba(99,102,241,0.12);}
+  .avatar-option[disabled]{opacity:0.55;cursor:progress;}
+  .avatar-option--locked{opacity:0.7;cursor:not-allowed;border-color:rgba(251,191,36,0.3);}
+  .avatar-option--locked:hover{transform:none;}
+  .avatar-option__swatch{width:48px;height:48px;font-size:1.4rem;flex-shrink:0;}
+  .avatar-option__label{font-weight:600;letter-spacing:0.02em;}
+  .avatar-option__check{margin-left:auto;font-size:1rem;opacity:0;transition:opacity 0.2s ease;}
+  .avatar-option[aria-checked="true"] .avatar-option__check{opacity:0.85;}
+  .avatar-swatch{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;}
+  .avatar-swatch svg{display:block;width:100%;height:100%;border-radius:inherit;}
+  .avatar-option__premium-badge{position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border-radius:999px;background:linear-gradient(135deg,#fbbf24,#ec4899);color:#0b1120;font-size:0.6rem;font-weight:800;box-shadow:0 2px 8px rgba(236,72,153,0.3);}
+  .avatar-option__premium-badge[hidden]{display:none;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  .avatar-status{font-size:0.85rem;min-height:1em;}
+  .avatar-status--error{color:#f87171;}
+
+  /* Палітра акцентів усередині профіль-панелі */
+  .profile-panel__drawer .btn{background:var(--profile-accent);color:var(--profile-accent-contrast);border-color:transparent;box-shadow:0 6px 18px var(--profile-glow);}
+  .profile-panel__drawer .btn:hover{filter:brightness(0.95);} 
+  .profile-panel__drawer .btn.secondary{background:transparent;color:var(--profile-accent);border:1px solid var(--profile-accent);box-shadow:none;}
+
+  /* Анімація появи профіль-панелі */
+  .profile-panel.open .profile-panel__drawer{transform:translateX(0);opacity:1;}
+  .profile-panel__overlay{opacity:0;transition:opacity 220ms ease;}
+  .profile-panel.open .profile-panel__overlay{opacity:1;}
+
+  /* Кнопки у шапці профілю: компактніші, з акцентним кольором */
+  .profile-panel__header .btn{padding:6px 10px;border-radius:10px;}
+  .profile-panel__header .btn.secondary{background:transparent;color:var(--profile-accent);border:1px solid var(--profile-accent);box-shadow:none;}
+  .profile-panel__header .btn.secondary:hover{background:rgba(99,102,241,0.08);}
+
+  /* Підсвітка оверлею вибору аватарів під обраний акцент */
+  .avatar-picker-overlay{box-shadow:0 25px 80px var(--profile-glow, rgba(15,23,42,0.55));}
+
+  /* Бічна шухляда кастомізації: адаптивна — за замовчуванням поруч з правим краєм,
+     при відкритій профіль-панелі зсувається вліво, щоб не перекривати її. */
+  .customize-drawer{
+    position:fixed;
+    top:0;
+    right:16px; /* ближче до краю коли профіль закритий */
+    height:100%;
+    width:360px;
+    max-width:calc(100% - 32px);
+    z-index:10001;
+    background:var(--bg-panel,#0f172a);
+    color:inherit;
+    box-shadow:-24px 0 60px rgba(15,23,42,0.45);
+    padding:24px;
+    display:none;
+    flex-direction:column;
+    gap:16px;
+    overflow-y:auto;
+    transition:right 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+  }
+  /* Коли профіль відкритий, зсунути шухляду лівіше, щоб не перекривати профіль-панель */
+  body.profile-panel-open .customize-drawer{ right: 400px; }
+  .customize-drawer.open{display:flex;}
+
+  /* Якщо простір вузький — зробити шухляду більш адаптивною або накривати вміст */
+  @media (max-width:1200px){
+    body.profile-panel-open .customize-drawer{ right: 360px; }
+  }
+  @media (max-width:1024px){
+    /* На планшетах — краще центрувати шухляду в межах екрану */
+    .customize-drawer{ right:24px; width:320px; max-width:calc(100% - 48px); }
+    body.profile-panel-open .customize-drawer{ right: calc(400px + 16px); }
+  }
+  @media (max-width:768px){
+    /* На мобільних — повністю накривна шухляда */
+    .customize-drawer{ position:fixed; inset:16px; width:auto; max-width:none; right:16px; left:16px; border-radius:12px; }
+    body.profile-panel-open .customize-drawer{ right:16px; left:16px; }
+  }
+  .theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .theme-option{display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:12px;border:1px solid rgba(148,163,184,0.25);border-radius:12px;background:rgba(15,23,42,0.25);cursor:pointer;position:relative;}
+  .theme-option__premium-badge{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:999px;background:rgba(15,23,42,0.8);color:#fbbf24;font-size:0.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+  .theme-option[data-selected="true"]{border-color:var(--profile-accent); box-shadow:0 0 0 3px var(--profile-glow);} 
+  .theme-swatch{width:48px;height:30px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.25);} 
+  .theme-label{font-weight:600;font-size:0.9rem;}
+  /* Світла тема для шухляди кастомізації */
+  html:not(.dark) .customize-drawer{background:#ffffff;color:#1f2937;box-shadow:-24px 0 60px rgba(0,0,0,0.15);} 
+  html:not(.dark) .theme-option{background:rgba(249,250,251,0.8);border-color:rgba(209,213,219,0.4);} 
+
+  /* Чіп індикатора теми профілю */
+  .profile-role-chip.theme{background:transparent;color:var(--profile-accent);border:1px solid var(--profile-accent);} 
+      .profile-role-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
+      .profile-role-chip.admin{background:rgba(34,197,94,0.18);color:#bbf7d0;}
+      .profile-role-chip.user{background:rgba(59,130,246,0.18);color:#c7d2fe;}
+      .profile-summary{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:14px;background:rgba(255,255,255,0.04);}
+      .profile-metrics{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}
+      .profile-metric-card{padding:14px;border-radius:14px;background:rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:6px;}
+      .profile-orders-list{display:flex;flex-direction:column;gap:12px;}
+      .profile-order-card{padding:14px;border-radius:14px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.15);display:flex;flex-direction:column;gap:8px;}
+      .profile-order-status{padding:4px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;align-self:flex-start;}
+      .profile-order-status.new{background:rgba(59,130,246,0.18);color:#bfdbfe;}
+      .profile-order-status.processing{background:rgba(234,179,8,0.18);color:#fde68a;}
+      .profile-order-status.completed{background:rgba(34,197,94,0.18);color:#bbf7d0;}
+      .profile-order-status.canceled{background:rgba(239,68,68,0.18);color:#fecaca;}
+  @media (max-width:1400px){.avatar-picker-overlay{right:420px;}}
+  @media (max-width:1200px){.avatar-picker-overlay{right:360px;}}
+  @media (max-width:1024px){.avatar-picker-overlay{left:24px;right:24px;top:auto;bottom:24px;transform:none;max-height:calc(100% - 48px);width:auto;max-width:none;}}
+  @media (max-width:768px){.avatar-picker-overlay{position:fixed;inset:0;left:16px;right:16px;top:16px;bottom:16px;padding:20px;transform:none;width:auto;max-width:none;}}
+      @media (max-width:768px){.profile-panel__drawer{width:100%;padding:24px;}}
+      
+      /* Світла тема для профіль-панелі */
+      :root {
+        --bg-panel-light: #ffffff;
+        --text-panel-light: #1f2937;
+        --text-muted-light: #6b7280;
+      }
+      
+      html:not(.dark) .profile-panel__drawer {
+        background: var(--bg-panel-light);
+        color: var(--text-panel-light);
+        box-shadow: -24px 0 60px rgba(0,0,0,0.15);
+      }
+      
+      html:not(.dark) .profile-panel__drawer .muted {
+        color: var(--text-muted-light);
+      }
+      
+      html:not(.dark) .profile-panel__drawer h2,
+      html:not(.dark) .profile-panel__drawer h3,
+      html:not(.dark) .profile-panel__drawer strong {
+        color: var(--text-panel-light);
+      }
+      
+      html:not(.dark) .avatar-picker-overlay {
+        background: rgba(255,255,255,0.95);
+        color: var(--text-panel-light);
+        box-shadow: 0 25px 80px rgba(0,0,0,0.15);
+      }
+      
+      html:not(.dark) .avatar-option {
+        background: rgba(249,250,251,0.8);
+        border-color: rgba(209,213,219,0.4);
+        color: var(--text-panel-light);
+      }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-gradient-to-b from-indigo-50 to-white text-gray-800 dark:bg-gray-900 dark:text-gray-100">
@@ -26,17 +335,21 @@
                 <div class="subtitle">Daily quotes & tiny boosts</div>
             </div>
 
+            <button type="button" id="navDrawerToggle" class="nav-hamburger" aria-controls="navDrawer" aria-expanded="false" aria-label="Відкрити меню" data-i18n-aria-label="nav_open_menu">
+                <span class="nav-hamburger__line"></span>
+                <span class="nav-hamburger__line"></span>
+                <span class="nav-hamburger__line"></span>
+            </button>
+
             <nav class="site-nav" aria-label="Main navigation">
-                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}nav-active{% endif %}" data-i18n="nav_home">Головна</a>
-                <a href="{{ url_for('statistics') }}" class="nav-item {% if request.endpoint == 'statistics' %}nav-active{% endif %}" data-i18n="nav_statistics">Статистика</a>
-                <a href="{{ url_for('journal') }}" class="nav-item {% if request.endpoint == 'journal' %}nav-active{% endif %}" data-i18n="nav_journal">Щоденник</a>
-                <a href="{{ url_for('goals') }}" class="nav-item {% if request.endpoint == 'goals' %}nav-active{% endif %}" data-i18n="nav_goals">Цілі</a>
-                <a href="{{ url_for('about') }}" class="nav-item {% if request.endpoint == 'about' %}nav-active{% endif %}" data-i18n="nav_about">Про нас</a>
-                <a href="{{ url_for('favorites') }}" class="nav-item {% if request.endpoint == 'favorites' %}nav-active{% endif %}" data-i18n="nav_favorites">Обрані</a>
-                <div id="nav-underline" aria-hidden="true"></div>
+                <div class="nav-main" role="tablist">
+                    <a href="{{ url_for('index') }}" class="nav-item nav-primary {% if request.endpoint == 'index' %}nav-active{% endif %}" data-i18n="nav_home">Головна</a>
+                    <a href="{{ url_for('about') }}" class="nav-item nav-primary {% if request.endpoint == 'about' %}nav-active{% endif %}" data-i18n="nav_about">Про нас</a>
+                    <a href="{{ url_for('store') }}" class="nav-item nav-primary {% if request.endpoint == 'store' %}nav-active{% endif %}" data-i18n="store_title">Магазин</a>
+                </div>
             </nav>
 
-            <div class="header-controls">
+      <div class="header-controls">
                 <select id="languageSelect" class="lang-select" aria-label="Select language">
                     <option value="uk">ua</option>
                     <option value="en">eng</option>
@@ -65,8 +378,56 @@
                         </g>
                     </svg>
                 </label>
+        <button type="button" id="profileTrigger" class="profile-trigger" aria-label="Відкрити профіль" data-i18n-aria-label="profile_open_button" data-i18n-title="profile_open_button" title="Відкрити профіль" hidden>
+          <span class="profile-avatar-wrapper">
+            <span id="profileTriggerAvatar" class="avatar-swatch avatar-swatch--none">🙂</span>
+            <span id="profilePremiumBadge" class="premium-indicator" hidden data-i18n-title="profile_premium_badge" data-i18n-aria-label="profile_premium_badge" aria-label="Premium" title="Premium">★<span class="premium-indicator__label">Premium</span></span>
+          </span>
+        </button>
             </div>
         </header>
+
+        <div id="navDrawer" class="nav-drawer" aria-hidden="true">
+          <div class="nav-drawer__overlay" data-drawer-close></div>
+          <aside class="nav-drawer__panel" role="dialog" aria-labelledby="navDrawerTitle">
+            <div class="nav-drawer__header">
+              <h2 id="navDrawerTitle" class="nav-drawer__title" data-i18n="nav_menu_title">Меню</h2>
+              <button type="button" class="nav-drawer__close" data-drawer-close aria-label="Закрити меню" data-i18n-aria-label="nav_close_menu">×</button>
+            </div>
+
+            <nav class="nav-drawer__section" aria-label="Secondary navigation">
+              <p class="nav-drawer__section-title" data-i18n="nav_section_secondary">Сторінки</p>
+              <a href="{{ url_for('statistics') }}" class="nav-drawer__link {% if request.endpoint == 'statistics' %}nav-drawer__link--active{% endif %}" data-i18n="nav_statistics" data-drawer-close-on-click data-drawer-focus>Статистика</a>
+              <a href="{{ url_for('journal') }}" class="nav-drawer__link {% if request.endpoint == 'journal' %}nav-drawer__link--active{% endif %}" data-i18n="nav_journal" data-drawer-close-on-click>Щоденник</a>
+              <a href="{{ url_for('goals') }}" class="nav-drawer__link {% if request.endpoint == 'goals' %}nav-drawer__link--active{% endif %}" data-i18n="nav_goals" data-drawer-close-on-click>Цілі</a>
+              <a href="{{ url_for('favorites') }}" class="nav-drawer__link {% if request.endpoint == 'favorites' %}nav-drawer__link--active{% endif %}" data-i18n="nav_favorites" data-drawer-close-on-click>Обрані</a>
+            </nav>
+
+            <div class="nav-drawer__separator" role="presentation"></div>
+
+            <nav class="nav-drawer__section" aria-label="Account navigation">
+              <p class="nav-drawer__section-title" data-i18n="nav_section_account">Акаунт</p>
+              <div id="admin-dropdown" class="nav-drawer__admin" style="display:none;">
+                <span class="nav-drawer__admin-label" data-i18n="admin_panel">Адмін</span>
+                <div id="admin-menu" class="nav-drawer__submenu">
+                  <a href="{{ url_for('admin_dashboard') }}" class="nav-drawer__link" data-i18n="admin_dashboard_title" data-drawer-close-on-click>Дашборд</a>
+                  <a href="{{ url_for('admin_products') }}" class="nav-drawer__link" data-i18n="admin_products_title" data-drawer-close-on-click>Продукти</a>
+                  <a href="{{ url_for('admin_orders') }}" class="nav-drawer__link" data-i18n="admin_orders_title" data-drawer-close-on-click>Замовлення</a>
+                  <a href="{{ url_for('admin_users') }}" class="nav-drawer__link" data-i18n="admin_users_title" data-drawer-close-on-click>Користувачі</a>
+                  <a href="{{ url_for('admin_feedback') }}" class="nav-drawer__link" data-i18n="feedback_title" data-drawer-close-on-click>Відгуки</a>
+                </div>
+              </div>
+              <div id="user-nav-items" class="nav-auth nav-auth--drawer" style="display:none;">
+                <a href="#" class="nav-drawer__link nav-drawer__link--accent" id="user-email-display" style="opacity:0.85;" data-i18n="my_account" data-drawer-close-on-click>Мій акаунт</a>
+                <a href="{{ url_for('logout') }}" class="nav-drawer__link" data-i18n="logout" data-drawer-close-on-click>Вийти</a>
+              </div>
+              <div id="guest-nav-items" class="nav-auth nav-auth--drawer">
+                <a href="/auth/login" class="nav-drawer__link" data-i18n="login_button" data-drawer-close-on-click>Увійти</a>
+                <a href="/auth/register" class="nav-drawer__link" data-i18n="register_button" data-drawer-close-on-click>Реєстрація</a>
+              </div>
+            </nav>
+          </aside>
+        </div>
 
         <main class="main">
             {% block content %}{% endblock %}
@@ -77,7 +438,1057 @@
         </footer>
     </div>
 
+    <div id="profilePanel" class="profile-panel" aria-hidden="true">
+      <div class="profile-panel__overlay" data-profile-close></div>
+      <div id="avatarSection" class="avatar-picker-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="avatarSectionTitle" tabindex="-1">
+        <div class="profile-avatar-section">
+          <div class="avatar-picker-overlay__header">
+            <div class="profile-avatar-section__intro">
+              <h3 id="avatarSectionTitle" style="margin:0; font-size:1.2rem;" data-i18n="profile_avatar_section">Аватар</h3>
+              <p class="muted" style="margin:0; font-size:0.92rem;" data-i18n="profile_avatar_hint">Обери фон чи емодзі для кнопки профілю.</p>
+            </div>
+            <button type="button" class="btn secondary avatar-picker-overlay__close" data-avatar-close data-i18n-title="close" data-i18n-aria-label="close" aria-label="Закрити" title="Закрити">×</button>
+          </div>
+          <div id="avatarPicker" class="avatar-grid" role="radiogroup" aria-label="Вибір аватарів" data-i18n-aria-label="profile_avatar_picker_label"></div>
+          <div id="avatarStatus" class="avatar-status muted" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+      <aside class="profile-panel__drawer" role="dialog" aria-labelledby="profilePanelTitle">
+        <div class="profile-panel__header">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div class="profile-avatar-wrapper">
+              <div id="panelAvatar" class="profile-avatar avatar-swatch avatar-swatch--none" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" data-i18n-aria-label="profile_avatar_toggle" data-i18n-title="profile_avatar_toggle" aria-label="Вибрати аватар" title="Вибрати аватар">🙂</div>
+              <span id="panelPremiumBadge" class="premium-indicator" hidden data-i18n-title="profile_premium_badge" data-i18n-aria-label="profile_premium_badge" aria-label="Premium" title="Premium">★<span class="premium-indicator__label">Premium</span></span>
+            </div>
+            <div>
+              <h2 id="profilePanelTitle" style="margin:0; font-size:1.35rem; font-weight:700;" data-i18n="profile_title">Мій профіль</h2>
+              <div id="panelEmail" style="opacity:0.85; font-size:0.95rem;">—</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn secondary" data-profile-close style="padding:6px 12px;">×</button>
+          </div>
+        </div>
+
+        <div class="profile-summary">
+          <span class="muted" data-i18n="profile_registered_at">Зареєстровано</span>
+          <strong id="panelCreated" style="font-size:1rem;">—</strong>
+          <div id="panelRole" class="profile-role-chip user">User</div>
+          <a id="panelAdminLink" href="{{ url_for('admin_dashboard') }}" class="btn" style="display:none; align-self:flex-start;" data-i18n="profile_open_admin">Відкрити адмін-панель</a>
+        </div>
+        <div class="profile-metrics">
+          <div class="profile-metric-card">
+            <span class="muted" data-i18n="profile_total_orders">Усього замовлень</span>
+            <strong id="panelTotalOrders" style="font-size:1.6rem;">0</strong>
+            <span style="font-size:0.8rem; opacity:0.7;" data-i18n="profile_orders_recent">за весь час</span>
+          </div>
+          <div class="profile-metric-card">
+            <span class="muted" data-i18n="profile_completed_orders">Завершено</span>
+            <strong id="panelCompletedOrders" style="font-size:1.6rem;">0</strong>
+            <span style="font-size:0.8rem; opacity:0.7;" data-i18n="profile_completed_hint">успішно доставлено</span>
+          </div>
+          <div class="profile-metric-card">
+            <span class="muted" data-i18n="profile_total_spent">Сума покупок</span>
+            <strong id="panelTotalSpent" style="font-size:1.6rem;">0.00</strong>
+            <span style="font-size:0.8rem; opacity:0.7;" data-i18n="profile_total_spent_hint">грн</span>
+          </div>
+        </div>
+
+        <!-- Керування темою профілю: індикатор + кнопка відкриття -->
+        <div class="profile-theme-controls" style="display:flex;align-items:center;gap:10px;">
+          <div id="profileThemeIndicator" class="profile-role-chip theme">Тема: Дефолт</div>
+          <button type="button" class="btn" id="openCustomizeBtn">Кастомізація</button>
+        </div>
+
+        <section>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 style="margin:0; font-size:1.1rem;" data-i18n="profile_orders_section">Замовлення</h3>
+            <a href="{{ url_for('store') }}" class="btn secondary" data-i18n="profile_go_to_store">До магазину</a>
+          </div>
+          <div id="panelOrders" class="profile-orders-list">
+            <p class="muted" data-i18n="loading">Завантаження...</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- Бічна шухляда кастомізації (розташовується ліворуч від профіль-панелі) -->
+    <aside id="customizeDrawer" class="customize-drawer" role="dialog" aria-labelledby="customizePanelTitle" aria-hidden="true">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;">
+          <h2 id="customizePanelTitle" style="margin:0;font-size:1.25rem;font-weight:700;">Кастомізація профілю</h2>
+          <button type="button" class="btn secondary" data-customize-close style="padding:6px 12px;">×</button>
+        </div>
+        <p class="muted" style="margin-top:0;">Оберіть акцентний колір для кнопок та сяйва в профілі. Налаштування збережеться і не скидатиметься при перемиканні теми.</p>
+
+        <div class="theme-grid" role="radiogroup" aria-label="Палітри профілю">
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="default" class="sr-only" checked>
+            <div class="theme-swatch" style="background:#6366f1; box-shadow:0 8px 20px rgba(99,102,241,0.35);"></div>
+            <span class="theme-label">Дефолт</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="pink" class="sr-only">
+            <div class="theme-swatch" style="background:#ec4899; box-shadow:0 8px 20px rgba(236,72,153,0.35);"></div>
+            <span class="theme-label">Рожевий</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="green" class="sr-only">
+            <div class="theme-swatch" style="background:#10b981; box-shadow:0 8px 20px rgba(16,185,129,0.35);"></div>
+            <span class="theme-label">Зелений</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="purple" class="sr-only">
+            <div class="theme-swatch" style="background:#a855f7; box-shadow:0 8px 20px rgba(168,85,247,0.35);"></div>
+            <span class="theme-label">Фіолетовий</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="teal" class="sr-only">
+            <div class="theme-swatch" style="background:#14b8a6; box-shadow:0 8px 20px rgba(20,184,166,0.35);"></div>
+            <span class="theme-label">Бірюзовий</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="rose" class="sr-only">
+            <div class="theme-swatch" style="background:#f43f5e; box-shadow:0 8px 20px rgba(244,63,94,0.35);"></div>
+            <span class="theme-label">Троянда</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="orange" class="sr-only">
+            <div class="theme-swatch" style="background:#f97316; box-shadow:0 8px 20px rgba(249,115,22,0.35);"></div>
+            <span class="theme-label">Помаранч</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="mint" class="sr-only">
+            <div class="theme-swatch" style="background:#06b6d4; box-shadow:0 8px 20px rgba(6,182,212,0.35);"></div>
+            <span class="theme-label">М'ята</span>
+          </label>
+          <label class="theme-option" tabindex="0">
+            <input type="radio" name="profileTheme" value="slate" class="sr-only">
+            <div class="theme-swatch" style="background:#64748b; box-shadow:0 8px 20px rgba(100,116,139,0.35);"></div>
+            <span class="theme-label">Сірий</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="sunset" class="sr-only">
+            <div class="theme-swatch" style="background:linear-gradient(135deg, #f97316, #ec4899); box-shadow:0 8px 20px rgba(249,115,22,0.35);"></div>
+            <span class="theme-label">Захід</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="galaxy" class="sr-only">
+            <div class="theme-swatch" style="background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 8px 20px rgba(139,92,246,0.35);"></div>
+            <span class="theme-label">Космос</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="forest" class="sr-only">
+            <div class="theme-swatch" style="background:#065f46; box-shadow:0 8px 20px rgba(6,95,70,0.35);"></div>
+            <span class="theme-label">Ліс</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="crimson" class="sr-only">
+            <div class="theme-swatch" style="background:#dc2626; box-shadow:0 8px 20px rgba(220,38,38,0.35);"></div>
+            <span class="theme-label">Червоний</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="deepsea" class="sr-only">
+            <div class="theme-swatch" style="background:#1e3a8a; box-shadow:0 8px 20px rgba(30,58,138,0.35);"></div>
+            <span class="theme-label">Глибини</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="gold" class="sr-only">
+            <div class="theme-swatch" style="background:linear-gradient(135deg, #eab308, #f59e0b); box-shadow:0 8px 20px rgba(234,179,8,0.35);"></div>
+            <span class="theme-label">Золото</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="lavender" class="sr-only">
+            <div class="theme-swatch" style="background:#c084fc; box-shadow:0 8px 20px rgba(192,132,252,0.35);"></div>
+            <span class="theme-label">Лаванда</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="coral" class="sr-only">
+            <div class="theme-swatch" style="background:#fb7185; box-shadow:0 8px 20px rgba(251,113,133,0.35);"></div>
+            <span class="theme-label">Корал</span>
+          </label>
+          <label class="theme-option theme-option--premium" tabindex="0" data-premium="true">
+            <span class="theme-option__premium-badge">★</span>
+            <input type="radio" name="profileTheme" value="amber" class="sr-only">
+            <div class="theme-swatch" style="background:#f59e0b; box-shadow:0 8px 20px rgba(245,158,11,0.35);"></div>
+            <span class="theme-label">Сонячний</span>
+          </label>
+        </div>
+    </aside>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+      // Завантажити поточного користувача, оновити навігацію та профіль-панель
+      (function(){
+        const userNav = document.getElementById('user-nav-items');
+        const guestNav = document.getElementById('guest-nav-items');
+  const adminDropdown = document.getElementById('admin-dropdown');
+  const adminMenu = document.getElementById('admin-menu');
+  const userEmailDisplay = document.getElementById('user-email-display');
+  const profileTrigger = document.getElementById('profileTrigger');
+  const profileTriggerAvatar = document.getElementById('profileTriggerAvatar');
+  const profilePremiumBadge = document.getElementById('profilePremiumBadge');
+  const avatarSection = document.getElementById('avatarSection');
+  const avatarPicker = document.getElementById('avatarPicker');
+  const avatarStatus = document.getElementById('avatarStatus');
+  const avatarCloseButtons = avatarSection ? avatarSection.querySelectorAll('[data-avatar-close]') : [];
+
+        const profilePanel = document.getElementById('profilePanel');
+        const panelEmail = document.getElementById('panelEmail');
+        const panelCreated = document.getElementById('panelCreated');
+        const panelRole = document.getElementById('panelRole');
+        const panelAvatar = document.getElementById('panelAvatar');
+  const panelPremiumBadge = document.getElementById('panelPremiumBadge');
+  const panelAdminLink = document.getElementById('panelAdminLink');
+        const panelTotalOrders = document.getElementById('panelTotalOrders');
+        const panelCompletedOrders = document.getElementById('panelCompletedOrders');
+        const panelTotalSpent = document.getElementById('panelTotalSpent');
+        const panelOrders = document.getElementById('panelOrders');
+        const profileClosers = profilePanel ? profilePanel.querySelectorAll('[data-profile-close]') : [];
+
+        const navDrawer = document.getElementById('navDrawer');
+        const navDrawerToggle = document.getElementById('navDrawerToggle');
+        const navDrawerOverlay = navDrawer ? navDrawer.querySelector('.nav-drawer__overlay') : null;
+        const navDrawerPanel = navDrawer ? navDrawer.querySelector('.nav-drawer__panel') : null;
+        const navDrawerCloseButtons = navDrawer ? navDrawer.querySelectorAll('[data-drawer-close]') : [];
+        const navDrawerLinks = navDrawer ? navDrawer.querySelectorAll('[data-drawer-close-on-click]') : [];
+
+  let currentUser = null;
+  let cachedOrders = null;
+  let availableAvatars = [];
+  let premiumLockedAvatars = [];
+  let avatarsLoaded = false;
+  let avatarSaving = false;
+  let avatarPickerVisible = false;
+
+        let drawerOpen = false;
+        const focusableSelectors = 'a[href], button:not([disabled]), select, textarea, input, [tabindex]:not([tabindex="-1"])';
+
+        function t(key){
+          try {
+            return (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') ? (translations_uk[key] || key) : (translations_en[key] || key);
+          } catch(err){
+            return key;
+          }
+        }
+
+        function formatDate(iso){
+          try { return new Date(iso).toLocaleString(); } catch(e){ return iso || '—'; }
+        }
+
+        // Enhanced avatar meta: SVG fragments for crisper look instead of plain emoji
+        // Each entry: { html, premium }
+        const avatarMeta = {
+          // Free set – kawaii characters
+          cat: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fef3c7"/><g stroke="#0f172a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22l4-6 2 2M46 22l-4-6-2 2" fill="none"/><circle cx="32" cy="36" r="16" fill="#fde68a"/><circle cx="26" cy="33" r="2.5" fill="#0f172a"/><circle cx="38" cy="33" r="2.5" fill="#0f172a"/><ellipse cx="32" cy="37" rx="1.5" ry="1" fill="#f59e0b"/><path d="M28 40q4 2 8 0" fill="none"/><circle cx="24" cy="38" r="2" fill="#fca5a5"/><circle cx="40" cy="38" r="2" fill="#fca5a5"/><path d="M48 28q8 4 10 12" fill="none"/></g></svg>`, premium:false },
+          dog: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fde8d0"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="20" cy="26" rx="5" ry="8" fill="#c9a87c"/><ellipse cx="44" cy="26" rx="5" ry="8" fill="#c9a87c"/><circle cx="32" cy="38" r="16" fill="#d9b98f"/><circle cx="27" cy="34" r="2.5" fill="#0f172a"/><circle cx="37" cy="34" r="2.5" fill="#0f172a"/><ellipse cx="32" cy="40" rx="2" ry="3" fill="#0f172a"/><path d="M32 43q-4 3-8 2M32 43q4 3 8 2" fill="none"/></g></svg>`, premium:false },
+          bunny: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fdebd3"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="24" cy="18" rx="4" ry="12" fill="#fff"/><ellipse cx="40" cy="18" rx="4" ry="12" fill="#fff"/><circle cx="32" cy="40" r="16" fill="#fff"/><circle cx="27" cy="36" r="2.5" fill="#0f172a"/><circle cx="37" cy="36" r="2.5" fill="#0f172a"/><path d="M30 42q2 2 4 0" fill="none"/><circle cx="24" cy="42" r="2.5" fill="#ffc4d1"/><circle cx="40" cy="42" r="2.5" fill="#ffc4d1"/></g></svg>`, premium:false },
+          bear: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#f4e3c3"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="22" r="5" fill="#d4a574"/><circle cx="44" cy="22" r="5" fill="#d4a574"/><circle cx="32" cy="38" r="16" fill="#d4a574"/><circle cx="27" cy="35" r="2.5" fill="#0f172a"/><circle cx="37" cy="35" r="2.5" fill="#0f172a"/><ellipse cx="32" cy="40" rx="3" ry="4" fill="#8b6f47"/><path d="M32 44q-5 3-9 1M32 44q5 3 9 1" fill="none"/></g></svg>`, premium:false },
+          koala: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#e8e4dc"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="24" r="7" fill="#b0a89f"/><circle cx="46" cy="24" r="7" fill="#b0a89f"/><circle cx="32" cy="40" r="16" fill="#d4cfc7"/><circle cx="27" cy="37" r="2" fill="#0f172a"/><circle cx="37" cy="37" r="2" fill="#0f172a"/><ellipse cx="32" cy="43" rx="5" ry="4" fill="#0f172a"/></g></svg>`, premium:false },
+          bee: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fef9e7"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="36" r="16" fill="#fbbf24"/><rect x="18" y="28" width="28" height="4" fill="#0f172a" rx="2"/><rect x="18" y="36" width="28" height="4" fill="#0f172a" rx="2"/><rect x="18" y="44" width="28" height="4" fill="#0f172a" rx="2"/><circle cx="26" cy="30" r="2" fill="#fff"/><circle cx="38" cy="30" r="2" fill="#fff"/><ellipse cx="14" cy="28" rx="8" ry="10" fill="rgba(147,197,253,0.5)" stroke="#3b82f6"/><ellipse cx="50" cy="28" rx="8" ry="10" fill="rgba(147,197,253,0.5)" stroke="#3b82f6"/></g></svg>`, premium:false },
+          penguin: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#d0e7f9"/><g stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="40" r="18" fill="#0f172a"/><ellipse cx="32" cy="44" rx="12" ry="14" fill="#fff"/><circle cx="27" cy="34" r="2.5" fill="#fff"/><circle cx="37" cy="34" r="2.5" fill="#fff"/><circle cx="27" cy="35" r="1.2" fill="#0f172a"/><circle cx="37" cy="35" r="1.2" fill="#0f172a"/><path d="M28 38h8" stroke="#f59e0b" stroke-width="2.5"/><path d="M18 42c-5 2-8 6-8 10M46 42c5 2 8 6 8 10" fill="none"/></g><ellipse cx="32" cy="56" rx="8" ry="3" fill="#f59e0b"/></svg>`, premium:false },
+          frog: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#dcfce7"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="#22c55e"><circle cx="22" cy="24" r="6"/><circle cx="42" cy="24" r="6"/><path d="M18 32c0-6 6-8 14-8s14 2 14 8v8c0 8-28 8-28 0z"/></g><circle cx="22" cy="24" r="2" fill="#0f172a"/><circle cx="42" cy="24" r="2" fill="#0f172a"/><path d="M26 36q6 4 12 0" stroke="#0f172a" stroke-width="2"/></svg>`, premium:false },
+          mushroom: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fee2e2"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="26" rx="18" ry="12" fill="#ef4444"/><circle cx="22" cy="24" r="3" fill="#fff"/><circle cx="32" cy="20" r="2.5" fill="#fff"/><circle cx="40" cy="24" r="2.5" fill="#fff"/><rect x="26" y="26" width="12" height="20" rx="2" fill="#fef3c7"/><circle cx="29" cy="34" r="1.5" fill="#0f172a"/><circle cx="35" cy="34" r="1.5" fill="#0f172a"/><path d="M30 38q2 1 4 0" fill="none"/></g></svg>`, premium:false },
+          star: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fef9c3"/><g stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M32 10l4 12h12l-10 8 4 12-10-8-10 8 4-12-10-8h12z" fill="#fef08a"/><circle cx="28" cy="28" r="2.5" fill="#0f172a"/><circle cx="36" cy="28" r="2.5" fill="#0f172a"/><path d="M30 32q2 2 4 0" fill="none"/><circle cx="24" cy="32" r="2" fill="#fca5a5"/><circle cx="40" cy="32" r="2" fill="#fca5a5"/></g></svg>`, premium:false },
+          cactus: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#d1fae5"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="26" y="20" width="12" height="28" rx="6" fill="#10b981"/><ellipse cx="18" cy="30" rx="6" ry="8" fill="#10b981"/><ellipse cx="46" cy="32" rx="6" ry="10" fill="#10b981"/><circle cx="29" cy="32" r="2" fill="#0f172a"/><circle cx="35" cy="32" r="2" fill="#0f172a"/><path d="M30 38q2 2 4 0" fill="none"/><circle cx="28" cy="26" r="1.5" fill="#fff"/><circle cx="32" cy="24" r="1.5" fill="#fff"/><circle cx="36" cy="26" r="1.5" fill="#fff"/><path d="M28 48l-2 8M36 48l2 8" fill="none"/></g></svg>`, premium:false },
+          // Premium set – magical creatures & treasures
+          unicorn: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fae8ff"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M28 14l4-6 4 6-4 2z" fill="#fbbf24"/><circle cx="32" cy="38" r="16" fill="#fff"/><circle cx="27" cy="34" r="2.5" fill="#0f172a"/><circle cx="37" cy="34" r="2.5" fill="#0f172a"/><path d="M30 40q2 2 4 0" fill="none"/><path d="M20 30q-4-2-6-6M44 30q4-2 6-6" fill="none"/></g><circle cx="24" cy="40" r="2" fill="#f9a8d4"/><circle cx="40" cy="40" r="2" fill="#f9a8d4"/><path d="M26 20q2-4 6-4t6 4" stroke="#c084fc" stroke-width="2" fill="none"/></svg>`, premium:true },
+          dragon: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#1e1b4b"/><g stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="40" r="18" fill="#7c3aed"/><circle cx="32" cy="28" r="14" fill="#7c3aed"/><path d="M18 26l-8-6 4-8M46 26l8-6-4-8" fill="#8b5cf6"/><circle cx="26" cy="26" r="3" fill="#fef08a"/><circle cx="38" cy="26" r="3" fill="#fef08a"/><circle cx="26" cy="26" r="1.5" fill="#0f172a"/><circle cx="38" cy="26" r="1.5" fill="#0f172a"/><path d="M28 32q4 3 8 0" fill="none"/><path d="M20 20l6-10 4 4M44 20l-6-10-4 4" fill="none"/></g><path d="M32 48q-6 4-10 8M32 48q6 4 10 8" stroke="#8b5cf6" stroke-width="2.5" fill="none"/></svg>`, premium:true },
+          koi: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#dbeafe"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="34" cy="36" rx="18" ry="12" fill="#f97316" transform="rotate(-10 34 36)"/><ellipse cx="30" cy="36" rx="14" ry="10" fill="#fff" transform="rotate(-10 30 36)"/><path d="M16 36q-4-4-4-8t4-4" fill="#fbbf24"/><circle cx="26" cy="32" r="2" fill="#0f172a"/><path d="M48 28q4 2 6 8t-2 10" fill="none"/><path d="M44 40q6 4 10 2M44 32q6-2 10 0" fill="none"/></g></svg>`, premium:true },
+          phoenix: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#7c2d12"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="36" rx="7" ry="9" fill="#dc2626"/><circle cx="32" cy="28" r="6" fill="#ef4444"/><circle cx="29" cy="27" r="1.5" fill="#fef08a"/><circle cx="35" cy="27" r="1.5" fill="#fef08a"/><circle cx="29" cy="27" r="0.6" fill="#0f172a"/><circle cx="35" cy="27" r="0.6" fill="#0f172a"/><path d="M30 30l2 1 2-1" fill="#f59e0b"/><path d="M28 23l4-8 4 8" fill="#fbbf24" stroke="#f59e0b"/><path d="M14 32q6-8 10-6 2 1 0 4-2 3-8 6M50 32q-6-8-10-6-2 1 0 4 2 3 8 6" fill="#dc2626"/><path d="M18 34q4-5 6-3 1 1 0 3-1 2-5 4M46 34q-4-5-6-3-1 1 0 3 1 2 5 4" fill="#f97316"/><path d="M20 38q3-3 4-2t-1 2q-1 2-3 2M44 38q-3-3-4-2t1 2q1 2 3 2" fill="#fbbf24"/><path d="M26 46q2-6 6-6t6 6l-6 14M38 46q-2-6-6-6t-6 6l6 14" fill="#dc2626"/><path d="M28 48q1-4 4-4t4 4l-4 10M36 48q-1-4-4-4t-4 4l4 10" fill="#f97316"/><path d="M30 50q1-2 2-2t2 2l-2 8M34 50q-1-2-2-2t-2 2l2 8" fill="#fef08a"/></g></svg>`, premium:true },
+          crown: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fef3c7"/><g stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 28l6-12 6 8 6-12 6 12 6-8 6 12v16H14z" fill="#fbbf24"/><rect x="14" y="44" width="36" height="6" rx="2" fill="#f59e0b"/><circle cx="20" cy="20" r="2.5" fill="#ef4444"/><circle cx="32" cy="12" r="3" fill="#ef4444"/><circle cx="44" cy="20" r="2.5" fill="#ef4444"/><circle cx="28" cy="36" r="2" fill="#0f172a"/><circle cx="36" cy="36" r="2" fill="#0f172a"/><path d="M30 42q2 2 4 0" fill="none"/></g></svg>`, premium:true },
+          crystal: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#e0e7ff"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M32 8l12 14H20z" fill="#c7d2fe"/><path d="M20 22l12 34 12-34z" fill="#a5b4fc"/><path d="M32 22v34M20 22l12 12 12-12M26 38l6 6 6-6" fill="none"/><circle cx="28" cy="28" r="1.5" fill="#6366f1"/><circle cx="36" cy="28" r="1.5" fill="#6366f1"/><circle cx="32" cy="32" r="2" fill="#6366f1"/><path d="M24 26l16 0" stroke="#6366f1" stroke-width="1.5"/></g></svg>`, premium:true },
+          moon: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#1e1b4b"/><g stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="18" fill="#fef08a"/><circle cx="38" cy="28" r="14" fill="#1e1b4b"/><circle cx="26" cy="28" r="2.5" fill="#0f172a"/><circle cx="34" cy="30" r="2.5" fill="#0f172a"/><path d="M28 36q3 2 6 0" fill="none"/><path d="M22 20l-2-6 4 2M42 18l2-6-4 2M18 36l-6 2 4-4M20 44l-4 4 6-2" stroke="#a5b4fc" stroke-width="1.5"/></g></svg>`, premium:true },
+          butterfly: { html: `<svg viewBox="0 0 64 64" aria-hidden="true"><rect rx="14" width="64" height="64" fill="#fae8ff"/><g stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="22" cy="24" rx="10" ry="14" fill="#e9d5ff" transform="rotate(-20 22 24)"/><ellipse cx="42" cy="24" rx="10" ry="14" fill="#e9d5ff" transform="rotate(20 42 24)"/><ellipse cx="20" cy="42" rx="8" ry="12" fill="#d8b4fe" transform="rotate(-15 20 42)"/><ellipse cx="44" cy="42" rx="8" ry="12" fill="#d8b4fe" transform="rotate(15 44 42)"/><ellipse cx="32" cy="32" rx="4" ry="12" fill="#c084fc"/><circle cx="30" cy="28" r="1.5" fill="#0f172a"/><circle cx="34" cy="28" r="1.5" fill="#0f172a"/><path d="M28 22l4-8 4 8" fill="none"/><circle cx="18" cy="22" r="2" fill="#fbbf24"/><circle cx="46" cy="22" r="2" fill="#fbbf24"/><circle cx="16" cy="38" r="1.5" fill="#fbbf24"/><circle cx="48" cy="38" r="1.5" fill="#fbbf24"/></g></svg>`, premium:true }
+        };
+
+        function avatarClassList(){
+          return ['avatar-swatch--none'].concat(Object.keys(avatarMeta).map(key => 'avatar-swatch--' + key));
+        }
+
+        function getUserInitial(user){
+          if(!user || !user.email){
+            return '🙂';
+          }
+          return user.email.charAt(0).toUpperCase();
+        }
+
+        function setAvatarSwatch(el, avatarKey, fallbackGlyph){
+          if(!el){
+            return;
+          }
+          avatarClassList().forEach(cls => el.classList.remove(cls));
+          if(avatarKey && avatarMeta[avatarKey]){
+            el.classList.add('avatar-swatch--' + avatarKey);
+            const meta = avatarMeta[avatarKey];
+            if(meta.html){
+              el.innerHTML = meta.html;
+            } else {
+              el.textContent = meta.glyph || fallbackGlyph || '';
+            }
+          } else {
+            el.classList.add('avatar-swatch--none');
+            el.textContent = fallbackGlyph || '🙂';
+          }
+        }
+
+        function translateAvatarLabel(key){
+          if(!key){
+            return t('avatar_label_none');
+          }
+          return t('avatar_label_' + key);
+        }
+
+        function updateProfileTrigger(user){
+          if(!profileTrigger || !profileTriggerAvatar){
+            return;
+          }
+          const label = t('profile_open_button');
+          profileTrigger.setAttribute('aria-label', label);
+          profileTrigger.setAttribute('title', label);
+          if(!user){
+            profileTrigger.hidden = true;
+            setAvatarSwatch(profileTriggerAvatar, null, '🙂');
+            if(profilePremiumBadge){
+              profilePremiumBadge.hidden = true;
+            }
+            return;
+          }
+          profileTrigger.hidden = false;
+          setAvatarSwatch(profileTriggerAvatar, user.avatar, getUserInitial(user));
+          if(profilePremiumBadge){
+            profilePremiumBadge.hidden = !user.is_premium;
+            profilePremiumBadge.setAttribute('aria-label', t('profile_premium_badge'));
+            profilePremiumBadge.setAttribute('title', t('profile_premium_badge'));
+          }
+        }
+
+        function setActiveAvatarOption(key){
+          if(!avatarPicker){
+            return;
+          }
+          const normalized = key || '';
+          avatarPicker.querySelectorAll('[data-avatar-option]').forEach(btn => {
+            const optionKey = btn.dataset.avatarOption || '';
+            const isActive = optionKey === normalized;
+            btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+            btn.classList.toggle('is-active', isActive);
+          });
+        }
+
+        function showAvatarStatus(message, isError){
+          if(!avatarStatus){
+            return;
+          }
+          avatarStatus.textContent = message || '';
+          avatarStatus.classList.toggle('avatar-status--error', !!isError);
+        }
+
+        function setAvatarSectionVisible(visible){
+          if(!avatarSection){
+            return;
+          }
+          avatarPickerVisible = !!visible;
+          if(visible){
+            avatarSection.hidden = false;
+            avatarSection.setAttribute('aria-hidden', 'false');
+          } else {
+            avatarSection.hidden = true;
+            avatarSection.setAttribute('aria-hidden', 'true');
+          }
+          if(panelAvatar){
+            panelAvatar.setAttribute('aria-expanded', visible ? 'true' : 'false');
+          }
+          if(!visible){
+            showAvatarStatus('');
+          }
+        }
+
+        async function loadAvailableAvatars(){
+          if(avatarsLoaded){
+            return {avatars: availableAvatars, premiumLocked: premiumLockedAvatars};
+          }
+          try {
+            const response = await fetch('/api/avatars', { credentials: 'include' });
+            if(response.ok){
+              const payload = await response.json();
+              availableAvatars = Array.isArray(payload.avatars) ? payload.avatars.filter(Boolean) : [];
+              const premiumUnlocked = Array.isArray(payload.premium_avatars) ? payload.premium_avatars : [];
+              premiumLockedAvatars = Array.isArray(payload.premium_locked) ? payload.premium_locked : [];
+              availableAvatars = availableAvatars.concat(premiumUnlocked);
+            } else {
+              availableAvatars = [];
+              premiumLockedAvatars = [];
+            }
+          } catch(err){
+            console.error('Load avatars failed', err);
+            availableAvatars = [];
+            premiumLockedAvatars = [];
+          }
+          avatarsLoaded = true;
+          return {avatars: availableAvatars, premiumLocked: premiumLockedAvatars};
+        }
+
+        function renderAvatarPicker(selectedKey){
+          if(!avatarPicker){
+            return;
+          }
+          const normalized = selectedKey || '';
+          const allOptions = [''].concat(availableAvatars || []).concat(premiumLockedAvatars || []);
+          avatarPicker.textContent = '';
+          avatarPicker.setAttribute('aria-label', t('profile_avatar_picker_label'));
+
+          allOptions.forEach(key => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const meta = key ? avatarMeta[key] || null : null;
+            const isPremium = meta && meta.premium;
+            const isLocked = isPremium && (premiumLockedAvatars || []).includes(key);
+            
+            btn.className = isLocked ? 'avatar-option avatar-option--locked' : 'avatar-option';
+            btn.dataset.avatarOption = key;
+            btn.setAttribute('role', 'radio');
+            
+            const swatchInner = key ? (meta && meta.html ? meta.html : ((meta && meta.glyph) || '★')) : '🙂';
+            const swatchClass = key && meta ? 'avatar-swatch--' + key : 'avatar-swatch--none';
+            const label = translateAvatarLabel(key);
+            btn.setAttribute('aria-checked', key === normalized ? 'true' : 'false');
+            
+              const premiumBadge = isLocked 
+              ? `<span class="avatar-option__premium-badge" title="${t('premium_only')}">★</span>`
+              : (isPremium ? `<span class="avatar-option__premium-badge" title="Premium">★<span class="sr-only">Premium</span></span>` : '');
+            
+            btn.innerHTML = `
+              <span class="avatar-option__swatch avatar-swatch ${swatchClass}">${swatchInner}</span>
+              <span class="avatar-option__label">${label}</span>
+              ${premiumBadge}
+              <span class="avatar-option__check" aria-hidden="true" ${isLocked ? 'hidden' : ''}>✓</span>
+            `;
+            
+            if(isLocked){
+              btn.addEventListener('click', () => {
+                showAvatarStatus(t('premium_required_message'), true);
+              });
+            } else {
+              btn.addEventListener('click', () => handleAvatarSelection(key));
+            }
+            
+            avatarPicker.appendChild(btn);
+          });
+
+          setActiveAvatarOption(normalized);
+          if(allOptions.length === 1 && avatarStatus && !avatarStatus.textContent){
+            showAvatarStatus(t('profile_avatar_unavailable'), false);
+          }
+        }
+
+        async function ensureAvatarPicker(selectedKey){
+          if(!avatarPicker){
+            return;
+          }
+          await loadAvailableAvatars();
+          renderAvatarPicker(selectedKey || '');
+        }
+
+        async function handleAvatarSelection(targetKey){
+          if(avatarSaving){
+            return;
+          }
+          const normalized = targetKey || '';
+          if(!currentUser){
+            showAvatarStatus(t('profile_avatar_not_logged'), true);
+            return;
+          }
+          if((currentUser.avatar || '') === normalized){
+            setActiveAvatarOption(normalized);
+            return;
+          }
+          avatarSaving = true;
+          showAvatarStatus(t('profile_avatar_saving'), false);
+          const optionButtons = avatarPicker ? Array.from(avatarPicker.querySelectorAll('.avatar-option')) : [];
+          optionButtons.forEach(btn => btn.disabled = true);
+          try {
+            const response = await fetch('/api/me/avatar', {
+              method: 'PUT',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ avatar: normalized })
+            });
+            if(!response.ok){
+              throw new Error('failed');
+            }
+            const payload = await response.json();
+            if(payload && payload.user){
+              currentUser = payload.user;
+            }
+            showAvatarStatus(t('profile_avatar_save_success'), false);
+            updateProfileTrigger(currentUser);
+            renderProfilePanel(currentUser, cachedOrders || []);
+          } catch(err){
+            console.error('Update avatar failed', err);
+            showAvatarStatus(t('profile_avatar_save_error'), true);
+          } finally {
+            avatarSaving = false;
+            optionButtons.forEach(btn => btn.disabled = false);
+            setActiveAvatarOption((currentUser && currentUser.avatar) || '');
+          }
+        }
+
+        async function openAvatarPickerSection(){
+          if(!currentUser){
+            showAvatarStatus(t('profile_avatar_not_logged'), true);
+            return;
+          }
+          setAvatarSectionVisible(true);
+          showAvatarStatus(t('loading'), false);
+          await ensureAvatarPicker((currentUser && currentUser.avatar) || '');
+          setActiveAvatarOption((currentUser && currentUser.avatar) || '');
+          showAvatarStatus('');
+          if(avatarSection){
+            avatarSection.focus({ preventScroll: true });
+          }
+          const focusTarget = avatarPicker ? (avatarPicker.querySelector('.avatar-option.is-active') || avatarPicker.querySelector('.avatar-option')) : null;
+          if(focusTarget){
+            focusTarget.focus({ preventScroll: true });
+          }
+        }
+
+        function closeAvatarPickerSection(){
+          setAvatarSectionVisible(false);
+          if(panelAvatar && profilePanel && profilePanel.classList.contains('open')){
+            panelAvatar.focus({ preventScroll: true });
+          }
+        }
+
+        async function toggleAvatarPickerSection(){
+          if(avatarPickerVisible){
+            closeAvatarPickerSection();
+          } else {
+            await openAvatarPickerSection();
+          }
+        }
+
+        async function loadCurrentUser(){
+          try {
+            const r = await fetch('/api/me', { credentials: 'include' });
+            if(r.ok){
+              const payload = await r.json();
+              const user = payload.user;
+              if(!user){
+                throw new Error('no-user');
+              }
+              currentUser = user;
+              updateProfileTrigger(currentUser);
+              userEmailDisplay.textContent = user.email || t('my_account');
+              userEmailDisplay.title = user.email || '';
+              userNav.style.display = '';
+              guestNav.style.display = 'none';
+              if(adminDropdown){
+                adminDropdown.style.display = user.is_admin ? '' : 'none';
+              }
+              if(adminMenu){
+                adminMenu.style.display = user.is_admin ? '' : 'none';
+              }
+            } else {
+              currentUser = null;
+              updateProfileTrigger(null);
+              userNav.style.display = 'none';
+              guestNav.style.display = '';
+              closeAvatarPickerSection();
+              if(adminDropdown){
+                adminDropdown.style.display = 'none';
+              }
+              if(adminMenu){
+                adminMenu.style.display = 'none';
+              }
+            }
+          } catch(err){
+            console.error('Load user failed', err);
+            currentUser = null;
+            updateProfileTrigger(null);
+            userNav.style.display = 'none';
+            guestNav.style.display = '';
+            closeAvatarPickerSection();
+            if(adminDropdown){
+              adminDropdown.style.display = 'none';
+            }
+            if(adminMenu){
+              adminMenu.style.display = 'none';
+            }
+          }
+          return currentUser;
+        }
+
+        function openDrawer(){
+          if(!navDrawer || drawerOpen){
+            return;
+          }
+          navDrawer.classList.add('open');
+          if(navDrawerToggle){
+            navDrawerToggle.classList.add('is-active');
+            navDrawerToggle.setAttribute('aria-expanded', 'true');
+            navDrawerToggle.setAttribute('aria-label', t('nav_close_menu'));
+          }
+          document.body.classList.add('nav-drawer-open');
+          navDrawer.setAttribute('aria-hidden', 'false');
+          drawerOpen = true;
+          if(navDrawerPanel){
+            const focusTarget = navDrawerPanel.querySelector('[data-drawer-focus]') || navDrawerPanel.querySelector(focusableSelectors);
+            if(focusTarget){
+              focusTarget.focus({ preventScroll: true });
+            }
+          }
+        }
+
+        function closeDrawer(){
+          if(!navDrawer || !drawerOpen){
+            return;
+          }
+          navDrawer.classList.remove('open');
+          if(navDrawerToggle){
+            navDrawerToggle.classList.remove('is-active');
+            navDrawerToggle.setAttribute('aria-expanded', 'false');
+            navDrawerToggle.setAttribute('aria-label', t('nav_open_menu'));
+            navDrawerToggle.focus({ preventScroll: true });
+          }
+          document.body.classList.remove('nav-drawer-open');
+          navDrawer.setAttribute('aria-hidden', 'true');
+          drawerOpen = false;
+        }
+
+        function toggleDrawer(){
+          if(drawerOpen){
+            closeDrawer();
+          } else {
+            openDrawer();
+          }
+        }
+
+        function handleDrawerKeydown(event){
+          if(!drawerOpen){
+            return;
+          }
+          if(event.key === 'Escape'){
+            closeDrawer();
+            return;
+          }
+          if(event.key === 'Tab' && navDrawerPanel){
+            const focusable = Array.from(navDrawerPanel.querySelectorAll(focusableSelectors)).filter(el => el.offsetParent !== null);
+            if(focusable.length === 0){
+              event.preventDefault();
+              return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if(event.shiftKey && document.activeElement === first){
+              event.preventDefault();
+              last.focus();
+            } else if(!event.shiftKey && document.activeElement === last){
+              event.preventDefault();
+              first.focus();
+            }
+          }
+        }
+
+        function renderOrdersList(orders){
+          if(!panelOrders){
+            return;
+          }
+
+          if(!Array.isArray(orders) || orders.length === 0){
+            panelOrders.innerHTML = `
+              <div style="padding:18px; text-align:center; border:1px dashed rgba(148,163,184,0.35); border-radius:14px;">
+                <p class="muted" style="margin-bottom:10px;">${t('profile_no_orders')}</p>
+                <a href="{{ url_for('store') }}" class="btn secondary">${t('profile_go_to_store')}</a>
+              </div>`;
+            return;
+          }
+
+          const markup = orders.map(order => {
+            const totalAmount = Number(order.total_amount || 0).toFixed(2);
+            const itemsMarkup = (order.items && order.items.length)
+              ? `<div style="font-size:0.88rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:6px;">${order.items.map(item => `<span style="padding:3px 8px; border-radius:999px; background:rgba(255,255,255,0.06);">${item.product_name} × ${item.quantity}</span>`).join('')}</div>`
+              : '';
+            return `
+              <article class="profile-order-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                  <div>
+                    <strong>#${order.id}</strong>
+                    <div style="font-size:0.85rem; opacity:0.75;">${formatDate(order.created_at)}</div>
+                  </div>
+                  <span class="profile-order-status ${order.status}">${t('order_status_' + order.status)}</span>
+                </div>
+                <div style="font-size:0.9rem; opacity:0.8;">${t('total')}: ${totalAmount}</div>
+                ${itemsMarkup}
+              </article>`;
+          }).join('');
+
+          panelOrders.innerHTML = `<div class="profile-orders-list">${markup}</div>`;
+        }
+
+        function renderProfilePanel(user, orders){
+          if(!profilePanel){
+            return;
+          }
+          if(panelAvatar){
+            panelAvatar.setAttribute('aria-label', t('profile_avatar_toggle'));
+            panelAvatar.setAttribute('title', t('profile_avatar_toggle'));
+          }
+
+          if(!user){
+            if(panelEmail){ panelEmail.textContent = '—'; }
+            if(panelCreated){ panelCreated.textContent = '—'; }
+            if(panelRole){ panelRole.textContent = '—'; panelRole.className = 'profile-role-chip user'; }
+            if(panelAvatar){ setAvatarSwatch(panelAvatar, null, '🙂'); }
+            if(panelPremiumBadge){
+              panelPremiumBadge.hidden = true;
+              panelPremiumBadge.setAttribute('aria-label', t('profile_premium_badge'));
+              panelPremiumBadge.setAttribute('title', t('profile_premium_badge'));
+            }
+            if(panelAdminLink){ panelAdminLink.style.display = 'none'; }
+            if(panelTotalOrders){ panelTotalOrders.textContent = '0'; }
+            if(panelCompletedOrders){ panelCompletedOrders.textContent = '0'; }
+            if(panelTotalSpent){ panelTotalSpent.textContent = '0.00'; }
+            if(panelOrders){ panelOrders.innerHTML = `<p class="muted">${t('profile_no_orders')}</p>`; }
+            setActiveAvatarOption('');
+            closeAvatarPickerSection();
+            return;
+          }
+
+          if(panelEmail){ panelEmail.textContent = user.email || '—'; }
+          if(panelCreated){ panelCreated.textContent = formatDate(user.created_at); }
+          if(panelRole){
+            panelRole.textContent = user.is_admin ? t('profile_role_admin') : t('profile_role_user');
+            panelRole.className = user.is_admin ? 'profile-role-chip admin' : 'profile-role-chip user';
+          }
+          if(panelAvatar){ setAvatarSwatch(panelAvatar, user.avatar, getUserInitial(user)); }
+          if(panelPremiumBadge){
+            panelPremiumBadge.hidden = !user.is_premium;
+            panelPremiumBadge.setAttribute('aria-label', t('profile_premium_badge'));
+            panelPremiumBadge.setAttribute('title', t('profile_premium_badge'));
+          }
+          if(panelAdminLink){ panelAdminLink.style.display = user.is_admin ? 'inline-flex' : 'none'; }
+
+          const totalOrders = Array.isArray(orders) ? orders.length : 0;
+          const completedOrders = Array.isArray(orders) ? orders.filter(o => o.status === 'completed').length : 0;
+          const totalSpent = Array.isArray(orders) ? orders.reduce((acc, o) => acc + Number(o.total_amount || 0), 0) : 0;
+
+          if(panelTotalOrders){ panelTotalOrders.textContent = totalOrders; }
+          if(panelCompletedOrders){ panelCompletedOrders.textContent = completedOrders; }
+          if(panelTotalSpent){ panelTotalSpent.textContent = totalSpent.toFixed(2); }
+
+          renderOrdersList((orders || []).slice(0, 6));
+          setActiveAvatarOption(user.avatar || '');
+        }
+
+        async function loadProfilePanelData(){
+          try {
+            if(!currentUser){
+              await loadCurrentUser();
+            }
+            const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
+            if(!ordersResponse.ok){
+              throw new Error('orders');
+            }
+            cachedOrders = await ordersResponse.json();
+            renderProfilePanel(currentUser, cachedOrders);
+          } catch(err){
+            console.error('Profile panel load failed', err);
+            renderProfilePanel(currentUser, cachedOrders || []);
+            if(panelOrders){
+              panelOrders.innerHTML = `<p style="color:#ef4444;">${t('load_failed')}</p>`;
+            }
+          }
+        }
+
+        async function openProfilePanel(event){
+          if(event){
+            event.preventDefault();
+          }
+          closeDrawer();
+          if(!profilePanel){
+            return;
+          }
+          if(panelOrders){
+            panelOrders.innerHTML = `<p class="muted">${t('loading')}</p>`;
+          }
+          renderProfilePanel(currentUser, cachedOrders || []);
+          if(avatarPickerVisible){
+            await ensureAvatarPicker((currentUser && currentUser.avatar) || '');
+          }
+          profilePanel.classList.add('open');
+          document.body.classList.add('profile-panel-open');
+          await loadProfilePanelData();
+        }
+
+        function closeProfilePanel(){
+          if(!profilePanel){
+            return;
+          }
+          profilePanel.classList.remove('open');
+          document.body.classList.remove('profile-panel-open');
+          closeAvatarPickerSection();
+          // Також закрити панель кастомізації при закритті профілю
+          closeCustomizePanel();
+        }
+
+        if(profileTrigger){
+          profileTrigger.addEventListener('click', openProfilePanel);
+        }
+
+        if(userEmailDisplay){
+          userEmailDisplay.addEventListener('click', openProfilePanel);
+        }
+
+        profileClosers.forEach(btn => {
+          btn.addEventListener('click', closeProfilePanel);
+        });
+
+        if(panelAvatar){
+          panelAvatar.addEventListener('click', async (event)=>{
+            event.preventDefault();
+            await toggleAvatarPickerSection();
+          });
+          panelAvatar.addEventListener('keydown', async (event)=>{
+            if(event.key === 'Enter' || event.key === ' '){
+              event.preventDefault();
+              await toggleAvatarPickerSection();
+            }
+          });
+        }
+
+        if(avatarSection){
+          avatarSection.addEventListener('click', (event)=>{
+            if(event.target === avatarSection && avatarPickerVisible){
+              closeAvatarPickerSection();
+            }
+          });
+        }
+
+        avatarCloseButtons.forEach(btn => {
+          btn.addEventListener('click', (event)=>{
+            event.preventDefault();
+            closeAvatarPickerSection();
+          });
+        });
+
+        document.addEventListener('keydown', (evt)=>{
+          if(evt.key === 'Escape'){
+            if(avatarPickerVisible){
+              evt.preventDefault();
+              closeAvatarPickerSection();
+              return;
+            }
+            if(profilePanel && profilePanel.classList.contains('open')){
+              closeProfilePanel();
+            }
+          }
+        });
+
+        window.addEventListener('languageChanged', ()=>{
+          if(profilePanel && profilePanel.classList.contains('open')){
+            renderProfilePanel(currentUser, cachedOrders || []);
+          }
+          if(currentUser && userEmailDisplay){
+            userEmailDisplay.textContent = currentUser.email || t('my_account');
+          }
+          updateProfileTrigger(currentUser);
+          if(avatarPicker && avatarsLoaded && avatarPickerVisible){
+            renderAvatarPicker((currentUser && currentUser.avatar) || '');
+          }
+          if(navDrawerToggle){
+            navDrawerToggle.setAttribute('aria-label', t(drawerOpen ? 'nav_close_menu' : 'nav_open_menu'));
+          }
+          if(profilePremiumBadge){
+            profilePremiumBadge.setAttribute('aria-label', t('profile_premium_badge'));
+            profilePremiumBadge.setAttribute('title', t('profile_premium_badge'));
+          }
+          if(panelPremiumBadge){
+            panelPremiumBadge.setAttribute('aria-label', t('profile_premium_badge'));
+            panelPremiumBadge.setAttribute('title', t('profile_premium_badge'));
+          }
+        });
+
+        if(navDrawerToggle){
+          navDrawerToggle.addEventListener('click', toggleDrawer);
+        }
+        if(navDrawerOverlay){
+          navDrawerOverlay.addEventListener('click', closeDrawer);
+        }
+        navDrawerCloseButtons.forEach(btn => {
+          btn.addEventListener('click', closeDrawer);
+        });
+        navDrawerLinks.forEach(link => {
+          link.addEventListener('click', closeDrawer);
+        });
+        document.addEventListener('keydown', handleDrawerKeydown);
+
+        /* ===== Кастомізація профілю: застосування та збереження теми акценту ===== */
+        const customizeDrawer = document.getElementById('customizeDrawer');
+        const customizeClosers = customizeDrawer ? customizeDrawer.querySelectorAll('[data-customize-close]') : [];
+        const openCustomizeBtn = document.getElementById('openCustomizeBtn');
+        const themeIndicator = document.getElementById('profileThemeIndicator');
+
+        function applyProfileTheme(themeKey){
+          // Застосувати атрибут на <html> і зберегти у localStorage
+          const key = themeKey || 'default';
+          document.documentElement.setAttribute('data-profile-theme', key);
+          try{ localStorage.setItem('profileTheme', key); }catch(e){}
+          // Оновити індикатор та підсвітити вибрану плитку
+          if(themeIndicator){ themeIndicator.textContent = 'Тема: ' + labelForTheme(key); }
+          markSelectedTheme(key);
+        }
+
+        function labelForTheme(key){
+          const map = { 
+            'default':'Дефолт', 
+            'pink':'Рожевий', 
+            'green':'Зелений',
+            'purple':'Фіолетовий 🔒',
+            'teal':'Бірюзовий 🔒',
+            'rose':'Троянда',
+            'orange':'Помаранч',
+            'mint':'М\'ята',
+            'slate':'Сірий',
+            'sunset':'Захід 🔒',
+            'galaxy':'Космос 🔒',
+            'forest':'Ліс 🔒',
+            'crimson':'Червоний 🔒',
+            'deepsea':'Глибини 🔒',
+            'gold':'Золото 🔒',
+            'lavender':'Лаванда 🔒',
+            'coral':'Корал 🔒',
+            'amber':'Сонячний 🔒'
+          };
+          return map[key] || key;
+        }
+
+        function markSelectedTheme(key){
+          if(!customizeDrawer){ return; }
+          customizeDrawer.querySelectorAll('.theme-option').forEach(opt => {
+            const input = opt.querySelector('input[name="profileTheme"]');
+            opt.setAttribute('data-selected', input && input.value === key ? 'true' : 'false');
+          });
+        }
+
+        function initProfileThemeRadios(){
+          if(!customizeDrawer){ return; }
+          const radios = customizeDrawer.querySelectorAll('input[name="profileTheme"]');
+          const saved = (localStorage.getItem('profileTheme') || 'default');
+          
+          // Оновити доступність Premium тем
+          updatePremiumThemesAccess();
+          
+          applyProfileTheme(saved);
+          radios.forEach(r => { r.checked = (r.value === saved); });
+          radios.forEach(r => {
+            r.addEventListener('change', ()=>{
+              if(r.checked){
+                // Перевірка Premium перед застосуванням теми
+                const themeOption = r.closest('.theme-option');
+                const isPremiumTheme = themeOption && themeOption.getAttribute('data-premium') === 'true';
+                const userIsPremium = currentUser && currentUser.is_premium;
+                
+                if(isPremiumTheme && !userIsPremium){
+                  alert('Ця тема доступна тільки для Premium користувачів!');
+                  // Повернути попередню тему
+                  const savedTheme = localStorage.getItem('profileTheme') || 'default';
+                  radios.forEach(radio => { radio.checked = (radio.value === savedTheme); });
+                  return;
+                }
+                
+                applyProfileTheme(r.value);
+              }
+            });
+          });
+          // Клік по всій плитці також активує радіокнопку
+          customizeDrawer.querySelectorAll('.theme-option').forEach(opt => {
+            opt.addEventListener('click', (e)=>{
+              const isPremiumTheme = opt.getAttribute('data-premium') === 'true';
+              const userIsPremium = currentUser && currentUser.is_premium;
+              
+              if(isPremiumTheme && !userIsPremium){
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              
+              const input = opt.querySelector('input[name="profileTheme"]');
+              if(input && !input.disabled){ 
+                input.checked = true; 
+                input.dispatchEvent(new Event('change', {bubbles:true})); 
+              }
+            });
+          });
+          markSelectedTheme(saved);
+        }
+        
+        function updatePremiumThemesAccess(){
+          if(!customizeDrawer){ return; }
+          const userIsPremium = currentUser && currentUser.is_premium;
+          
+          customizeDrawer.querySelectorAll('.theme-option--premium').forEach(opt => {
+            const input = opt.querySelector('input[name="profileTheme"]');
+            const badge = opt.querySelector('.theme-option__premium-badge');
+            
+            if(userIsPremium){
+              // Premium користувач - увімкнути теми
+              if(input){ input.disabled = false; }
+              if(badge){ badge.textContent = '★'; }
+              opt.style.opacity = '1';
+              opt.style.cursor = 'pointer';
+            } else {
+              // Free користувач - заблокувати теми
+              if(input){ input.disabled = true; }
+              if(badge){ badge.textContent = '🔒'; }
+              opt.style.opacity = '0.6';
+              opt.style.cursor = 'not-allowed';
+            }
+          });
+        }
+
+        function openCustomizePanel(){
+          if(!customizeDrawer){ return; }
+          initProfileThemeRadios();
+          customizeDrawer.classList.add('open');
+          customizeDrawer.setAttribute('aria-hidden','false');
+          // Поставити фокус на обрану плитку або на першу
+          const selected = customizeDrawer.querySelector('.theme-option[data-selected="true"]') || customizeDrawer.querySelector('.theme-option');
+          if(selected){ selected.focus({preventScroll:true}); }
+        }
+        function closeCustomizePanel(){
+          if(!customizeDrawer){ return; }
+          customizeDrawer.classList.remove('open');
+          customizeDrawer.setAttribute('aria-hidden','true');
+          // Повернути фокус на кнопку відкриття
+          if(openCustomizeBtn){ try{ openCustomizeBtn.focus({preventScroll:true}); }catch(e){} }
+        }
+
+        if(openCustomizeBtn){ openCustomizeBtn.addEventListener('click', openCustomizePanel); }
+        customizeClosers.forEach(btn => btn.addEventListener('click', closeCustomizePanel));
+
+        // ESC закриває панель кастомізації, якщо відкрита
+        document.addEventListener('keydown', (evt)=>{
+          if(evt.key === 'Escape' && customizeDrawer && customizeDrawer.classList.contains('open')){
+            closeCustomizePanel();
+          }
+        });
+
+        // Ініціалізація теми при завантаженні сторінки
+        applyProfileTheme(localStorage.getItem('profileTheme') || 'default');
+
+        loadCurrentUser();
+      })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
