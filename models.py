@@ -141,19 +141,24 @@ class MoodEntry(db.Model):
     
     __tablename__ = 'mood_entries'
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     mood = db.Column(db.String(32), nullable=False)
     date = db.Column(db.Date, nullable=False)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=True)
     activities = db.Column(db.String(500), nullable=True)  # Зберігаємо як comma-separated string
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Зв'язок з користувачем
+    user = db.relationship('User', backref=db.backref('mood_entries', lazy='dynamic', cascade='all, delete-orphan'))
 
-    def __init__(self, mood, date, title, content=None, activities=None):
+    def __init__(self, mood, date, title, user_id, content=None, activities=None):
         if mood not in self.VALID_MOODS:
             raise ValueError(f'Недійсне значення настрою. Допустимі значення: {", ".join(self.VALID_MOODS)}')
         self.mood = mood
         self.date = date
         self.title = title
+        self.user_id = user_id
         self.content = content
         self.activities = activities
 
@@ -161,6 +166,7 @@ class MoodEntry(db.Model):
         """Конвертує запис в словник для JSON відповіді."""
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'mood': self.mood,
             'date': self.date.isoformat(),
             'title': self.title,

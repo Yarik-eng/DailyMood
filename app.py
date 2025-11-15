@@ -189,10 +189,42 @@ def ensure_user_premium_columns():
         logging.error("Не вдалося гарантувати наявність колонок преміум у users: %s", exc)
 
 
+def ensure_mood_entry_user_id():
+    """Додає колонку user_id до mood_entries, якщо її немає."""
+    try:
+        inspector = inspect(db.engine)
+        columns = {col['name'] for col in inspector.get_columns('mood_entries')}
+        if 'user_id' not in columns:
+            # Спочатку додаємо колонку як nullable
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE mood_entries ADD COLUMN user_id INTEGER'))
+                conn.commit()
+            logging.info("Додано колонку user_id до таблиці mood_entries")
+            
+            # Якщо є існуючі записи без user_id, видаляємо їх або присвоюємо першому користувачу
+            with db.engine.connect() as conn:
+                result = conn.execute(text('SELECT COUNT(*) as cnt FROM mood_entries WHERE user_id IS NULL'))
+                orphan_count = result.fetchone()[0]
+                if orphan_count > 0:
+                    # Присвоюємо першому користувачу
+                    first_user = conn.execute(text('SELECT id FROM users ORDER BY id LIMIT 1')).fetchone()
+                    if first_user:
+                        conn.execute(text(f'UPDATE mood_entries SET user_id = {first_user[0]} WHERE user_id IS NULL'))
+                        logging.info(f"Присвоєно {orphan_count} старих записів користувачу #{first_user[0]}")
+                    else:
+                        # Немає користувачів — видаляємо старі записи
+                        conn.execute(text('DELETE FROM mood_entries WHERE user_id IS NULL'))
+                        logging.info(f"Видалено {orphan_count} старих записів без користувачів")
+                    conn.commit()
+    except Exception as exc:
+        logging.error("Не вдалося гарантувати наявність user_id у mood_entries: %s", exc)
+
+
 with app.app_context():
     db.create_all()
     ensure_user_avatar_column()
     ensure_user_premium_columns()
+    ensure_mood_entry_user_id()
 
 @app.errorhandler(404)
 def not_found_error(error):
@@ -557,6 +589,7 @@ def update_avatar():
 
 
 @app.route('/api/journal', methods=['GET'])
+@login_required
 def list_entries():
     """Return a list of journal entries as JSON.
 
@@ -567,10 +600,12 @@ def list_entries():
     Returns a JSON list of entry dicts using the model's to_dict() helper.
     """
     try:
+        user_id = session['user_id']
         month = request.args.get('month')
         mood = request.args.get('mood')
         
-        query = MoodEntry.query
+        # Фільтруємо тільки записи поточного користувача
+        query = MoodEntry.query.filter_by(user_id=user_id)
         
         if month:
             year, month = map(int, month.split('-'))
@@ -594,6 +629,7 @@ def list_entries():
         }), 500
 
 @app.route('/api/journal', methods=['POST'])
+@login_required
 def add_entry():
     """Add a journal entry.
 
@@ -603,6 +639,7 @@ def add_entry():
     success.
     """
     try:
+        user_id = session['user_id']
         # Будьте стійкими: якщо клієнт не надсилає JSON, get_json(None) може викинути помилку або повернути None
         data = request.get_json(silent=True)
         if not data or not isinstance(data, dict):
@@ -628,6 +665,7 @@ def add_entry():
                 mood=data['mood'],
                 date=date,
                 title=data['title'],
+                user_id=user_id,
                 content=data.get('content'),
                 activities=activities
             )
@@ -656,10 +694,20 @@ def add_entry():
         }), 500
 
 @app.route('/api/journal/<int:entry_id>', methods=['PUT'])
+@login_required
 def update_entry(entry_id):
     """Оновлює існуючий запис щоденника."""
     try:
+        user_id = session['user_id']
         entry = MoodEntry.query.get_or_404(entry_id)
+        
+        # Перевіряємо що запис належить користувачу
+        if entry.user_id != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Доступ заборонено'
+            }), 403
+        
         data = request.get_json() if request.is_json else request.form
         
         # Оновлюємо настрій якщо він наданий і валідний
@@ -697,10 +745,20 @@ def update_entry(entry_id):
         }), 500
 
 @app.route('/api/journal/<int:entry_id>', methods=['DELETE'])
+@login_required
 def delete_entry(entry_id):
     """Delete a journal entry."""
     try:
+        user_id = session['user_id']
         entry = MoodEntry.query.get_or_404(entry_id)
+        
+        # Перевіряємо що запис належить користувачу
+        if entry.user_id != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Доступ заборонено'
+            }), 403
+        
         db.session.delete(entry)
         db.session.commit()
         
@@ -719,6 +777,7 @@ def delete_entry(entry_id):
 
 # -------------------- Експорт та Аналітика (MVP) --------------------
 @app.route('/api/journal/export', methods=['GET'])
+@login_required
 def export_journal():
     """Експорт записів щоденника у CSV або JSON.
 
@@ -726,8 +785,9 @@ def export_journal():
     - format: 'csv' (за замовчуванням) або 'json'
     """
     try:
+        user_id = session['user_id']
         out_format = (request.args.get('format') or 'csv').strip().lower()
-        entries = MoodEntry.query.order_by(MoodEntry.date.asc(), MoodEntry.id.asc()).all()
+        entries = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.date.asc(), MoodEntry.id.asc()).all()
 
         if out_format == 'json':
             return jsonify({
@@ -762,6 +822,7 @@ def export_journal():
 
 
 @app.route('/api/stats/trends', methods=['GET'])
+@login_required
 def stats_trends():
     """Зведена аналітика: теплокарта та середні значення.
 
@@ -770,9 +831,13 @@ def stats_trends():
     - summary_30d: підсумок за 30 днів (лічильники настроїв, середній настрій)
     """
     try:
+        user_id = session['user_id']
         today = datetime.utcnow().date()
         year_ago = today - timedelta(days=364)
-        q = MoodEntry.query.filter(MoodEntry.date >= year_ago).order_by(MoodEntry.date.asc()).all()
+        q = MoodEntry.query.filter(
+            MoodEntry.user_id == user_id,
+            MoodEntry.date >= year_ago
+        ).order_by(MoodEntry.date.asc()).all()
 
         mood_to_numeric = {'happy': 1.0, 'neutral': 0.5, 'sad': 0.0}
 
@@ -846,33 +911,22 @@ def get_habits():
 def create_habit():
     try:
         data = request.get_json(silent=True) or {}
-        email = (data.get('email') or '').strip().lower()
-        password = (data.get('password') or '').strip()
+        name = (data.get('name') or '').strip()
+        habit_type = (data.get('type') or 'daily').strip()
         
-        if not email or not password:
-            logging.warning('Login failed: empty credentials')
-            return jsonify({'status': 'error', 'message': 'Email та пароль обов\'язкові'}), 400
+        if not name:
+            return jsonify({'status': 'error', 'message': 'Назва звички обов\'язкова'}), 400
         
-        user = User.query.filter_by(email=email).first()
+        habit = Habit(name=name, type=habit_type)
+        db.session.add(habit)
+        db.session.commit()
         
-        if not user:
-            logging.warning('Login failed: user not found %s', email)
-            return jsonify({'status': 'error', 'message': 'Невірний email або пароль'}), 401
-        
-        if not user.check_password(password):
-            logging.warning('Login failed: wrong password %s', email)
-            return jsonify({'status': 'error', 'message': 'Невірний email або пароль'}), 401
-        
-        session['user_id'] = user.id
-        logging.info('Login success for %s', email)
-        
-        return jsonify({'status': 'success', 'message': 'Вхід успішний', 'user': user.to_dict()}), 200
+        return jsonify({'status': 'success', 'data': habit.to_dict()}), 201
         
     except Exception as e:
-        logging.error(f"Login error: {e}")
+        db.session.rollback()
+        logging.error(f"Error creating habit: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-        db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Habit deleted'}), 200
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error deleting habit: {str(e)}")
@@ -897,6 +951,19 @@ def toggle_habit(habit_id):
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error toggling habit: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/habits/<int:habit_id>', methods=['DELETE'])
+def delete_habit(habit_id):
+    try:
+        habit = Habit.query.get_or_404(habit_id)
+        db.session.delete(habit)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Habit deleted'}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error deleting habit: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -1579,9 +1646,10 @@ def mood_predictor():
                 'premium_required': True
             }), 403
 
-        # Отримуємо останні 30 днів записів
+        # Отримуємо останні 30 днів записів ПОТОЧНОГО користувача
         thirty_days_ago = datetime.utcnow().date() - timedelta(days=30)
         recent_entries = MoodEntry.query.filter(
+            MoodEntry.user_id == user.id,
             MoodEntry.date >= thirty_days_ago
         ).order_by(MoodEntry.date.desc()).limit(30).all()
 
@@ -1701,11 +1769,11 @@ def activity_recommendations():
                 'premium_required': True
             }), 403
 
-        # Отримуємо параметр настрою або визначаємо з останнього запису
+        # Отримуємо параметр настрою або визначаємо з останнього запису користувача
         mood_param = request.args.get('mood')
         
         if not mood_param:
-            latest = MoodEntry.query.order_by(MoodEntry.date.desc()).first()
+            latest = MoodEntry.query.filter_by(user_id=user.id).order_by(MoodEntry.date.desc()).first()
             current_mood = latest.mood if latest else 'neutral'
         else:
             current_mood = mood_param if mood_param in MoodEntry.VALID_MOODS else 'neutral'
