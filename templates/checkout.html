@@ -193,6 +193,11 @@
   let selectedMethod = null;
   let currentOrder = null;
   let paymentMethods = [];
+  let orderId = null;
+
+  // Отримуємо orderId з URL одразу
+  const urlParams = new URLSearchParams(window.location.search);
+  orderId = urlParams.get('order_id');
 
   // Форматування номера картки
   cardNumberInput?.addEventListener('input', (e) => {
@@ -265,10 +270,6 @@
   }
 
   async function loadOrder(){
-    // Отримуємо ID останнього замовлення з URL або створюємо нове
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('order_id');
-    
     if(!orderId){
       // Немає замовлення - редірект в магазин
       window.location.href = '/store';

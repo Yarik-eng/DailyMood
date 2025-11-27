@@ -4,12 +4,12 @@
 
 {% block content %}
   <section class="page-banner">
-    <h1>Магазин</h1>
+    <h1 data-i18n="store_title">Магазин</h1>
   </section>
 
   <section class="theme-panel" aria-labelledby="store-title">
-    <h2 id="store-title" style="margin-top:0;">Преміум та підтримка</h2>
-    <p class="muted" style="margin-top:6px;">Обери Premium для розширених можливостей або підтримай нас покупкою доповнень.</p>
+    <h2 id="store-title" style="margin-top:0;" data-i18n="store_premium_title">Преміум та підтримка</h2>
+    <p class="muted" style="margin-top:6px;" data-i18n="store_premium_desc">Обери Premium для розширених можливостей або підтримай нас покупкою доповнень.</p>
 
     <div class="pricing" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-top:14px;">
       <article class="card" aria-label="Free plan">
@@ -57,18 +57,32 @@
 
     <div id="storeProducts" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:14px; margin-top:24px;">
       <article class="card" style="min-height:120px; display:flex; align-items:center; justify-content:center;">
-        <div class="muted">Завантаження продуктів…</div>
+        <div class="muted" data-i18n="loading_products">Завантаження продуктів…</div>
       </article>
     </div>
 
     <div id="storeEmpty" style="display:none; margin-top:16px;">
       <div style="padding:18px; text-align:center; border:1px dashed rgba(148,163,184,0.35); border-radius:14px;">
-        <p class="muted" style="margin:0 0 10px 0;">Поки що немає товарів. Адмін може додати їх у розділі “Продукти”.</p>
-        <a href="{{ url_for('admin_products') }}" class="btn secondary">Відкрити адмін-продукти</a>
+        <p class="muted" style="margin:0 0 10px 0;" data-i18n="no_products_available">Поки що немає товарів.</p>
+        <a href="{{ url_for('admin_products') }}" class="btn secondary" data-i18n="admin_products_title">Відкрити адмін-продукти</a>
       </div>
     </div>
   </section>
 
+    <!-- Product Details Modal -->
+    <div id="productDetailsModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999;">
+      <div id="productDetailsBackdrop" style="position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px);"></div>
+      <div class="card" role="dialog" aria-modal="true" aria-labelledby="productDetailsTitle" style="position:relative; max-width:720px; width:calc(100% - 32px); z-index:10000; padding:18px 18px 18px 18px;">
+        <button type="button" id="productDetailsClose" class="btn secondary" style="position:absolute; right:12px; top:12px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0;">✕</button>
+        <h3 id="productDetailsTitle" style="margin:0 0 6px 0; font-weight:900; padding-right:56px;">Товар</h3>
+        <div id="productDetailsPrice" class="muted" style="margin-bottom:10px; font-weight:700; padding-right:56px;"></div>
+        <div id="productDetailsBody" class="muted" style="white-space:pre-wrap;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+          <button type="button" class="btn secondary" id="productDetailsCancel" data-i18n="close">Закрити</button>
+          <button type="button" class="btn" id="productDetailsBuy" data-i18n="buy_now">Купити</button>
+        </div>
+      </div>
+    </div>
   <div id="compareModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999;">
     <div id="compareBackdrop" style="position:absolute; inset:0; background:rgba(0,0,0,.5);"></div>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="compareTitle" style="position:relative; max-width:760px; width:calc(100% - 32px); z-index:10000;">
@@ -146,6 +160,16 @@
     const compareGetPremium = document.getElementById('compareGetPremium');
     const premiumPriceEl = document.getElementById('premiumPrice');
 
+    // Product details modal refs
+    const productDetailsModal = document.getElementById('productDetailsModal');
+    const productDetailsBackdrop = document.getElementById('productDetailsBackdrop');
+    const productDetailsClose = document.getElementById('productDetailsClose');
+    const productDetailsCancel = document.getElementById('productDetailsCancel');
+    const productDetailsTitle = document.getElementById('productDetailsTitle');
+    const productDetailsPrice = document.getElementById('productDetailsPrice');
+    const productDetailsBody = document.getElementById('productDetailsBody');
+    const productDetailsBuy = document.getElementById('productDetailsBuy');
+
     let loadedProducts = [];
 
     function currency(n){
@@ -171,8 +195,15 @@
       el.className = 'card';
       el.style.minHeight = '120px';
 
-      const name = (p && p.name) || 'Товар';
-      const desc = (p && p.description) || '';
+      function getLocalized(field){
+        try {
+          const lang = (typeof currentLanguage!== 'undefined' && currentLanguage) ? currentLanguage : 'uk';
+          const key = lang === 'en' ? `${field}_en` : field;
+          return (p && (p[key] || p[field])) || '';
+        } catch(e){ return (p && p[field]) || ''; }
+      }
+      const name = getLocalized('name') || 'Товар';
+      const desc = getLocalized('description') || '';
       const price = currency((p && p.price) || 0);
 
       el.innerHTML = `
@@ -183,15 +214,28 @@
           </div>
           <p class="muted" style="margin:0;">${desc}</p>
           <div style="display:flex; gap:8px; margin-top:6px;">
-            <button type="button" class="btn" data-product-id="${p.id}">Купити</button>
-            <button type="button" class="btn secondary" data-product-id="${p.id}" data-action="details">Деталі</button>
+            <button type="button" class="btn" data-product-id="${p.id}" data-i18n="buy_now">Купити</button>
+            <button type="button" class="btn secondary" data-product-id="${p.id}" data-action="details" data-i18n="more_details">Деталі</button>
           </div>
         </div>`;
 
       const buyBtn = el.querySelector('button.btn');
       const detailsBtn = el.querySelector('button[data-action="details"]');
       if(buyBtn){ buyBtn.addEventListener('click', () => buyNow(p)); }
-      if(detailsBtn){ detailsBtn.addEventListener('click', () => alert(desc || 'Без опису')); }
+      if(detailsBtn){
+        detailsBtn.addEventListener('click', () => {
+          // Populate product details modal
+          productDetailsTitle.textContent = name;
+          productDetailsPrice.textContent = price ? ('Ціна: ' + price) : '';
+          productDetailsBody.textContent = desc || ((typeof currentLanguage!=='undefined' && currentLanguage==='en') ? 'No description' : 'Без опису');
+          productDetailsBuy.onclick = () => buyNow(p);
+          productDetailsModal.style.display = 'flex';
+        });
+      }
+      // Close handlers
+      [productDetailsClose, productDetailsCancel, productDetailsBackdrop].forEach(btn => {
+        btn && btn.addEventListener('click', () => { productDetailsModal.style.display = 'none'; });
+      });
       return el;
     }
 

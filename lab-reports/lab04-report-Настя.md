@@ -120,15 +120,29 @@ def create_feedback(): ...
 - Антон: тестування інтерфейсу
 
 ## Скріншоти
-- Форма відгуку — 
-![alt text](image-1.png)
-- Каталог продуктів / Оплата — 
-![alt text](image-2.png)
-![alt text](image-3.png)
-- Адмін‑панель — 
-![alt text](image-4.png)
-- Статистика/Mood Predictor — 
-![alt text](image-5.png)
+
+### Форма зворотного зв'язку
+
+lab-reports\screenshot\feedback.png
+
+### Каталог товарів
+
+lab-reports\screenshot\catalog.png
+
+### Адміністративна панель
+
+lab-reports\screenshot\admin_panel.png
+
+### Управління замовленнями
+
+lab-reports\screenshot\panel_product.png
+
+
+### Додаткова функціональність
+
+lab-reports\screenshot\rec.png
+
+lab-reports\screenshot\avatar.png
 
 ## Тестування
 1. Додавання нового відгуку та перегляд у адмін‑панелі
