@@ -1,0 +1,40 @@
+Get list of all products
+---
+tags:
+  - Products
+summary: Отримати список продуктів
+description: Повертає список всіх активних продуктів у магазині DailyMood
+responses:
+  200:
+    description: Успішно отримано список продуктів
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 1
+          name:
+            type: string
+            example: "Premium підписка"
+          description:
+            type: string
+            example: "Отримайте доступ до всіх преміум-функцій"
+          price:
+            type: number
+            format: float
+            example: 99.0
+          type:
+            type: string
+            example: "subscription"
+          slug:
+            type: string
+            example: "premium-subscription"
+          is_active:
+            type: boolean
+            example: true
+          created_at:
+            type: string
+            format: date-time
+            example: "2025-11-13T20:36:30.844076"

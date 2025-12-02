@@ -438,7 +438,7 @@
       
       const completed = list.filter(o => o.status === 'completed').length;
       const total = list.length;
-      const spent = list.reduce((acc, o) => acc + Number(o.total_amount || 0), 0);
+      const spent = list.filter(o => o.status === 'completed').reduce((acc, o) => acc + Number(o.total_amount || 0), 0);
       
       totalOrdersEl.textContent = total;
       completedOrdersEl.textContent = completed;

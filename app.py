@@ -15,6 +15,7 @@ The code below uses SQLAlchemy models defined in `models.py` (MoodEntry).
 """
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flasgger import Swagger, swag_from
 from functools import wraps
 import time
 import os
@@ -24,6 +25,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, extract, inspect, text
 from models import db, MoodEntry, Feedback, User, Product, Order, OrderItem, Payment
 from habits_models import Habit, HabitCompletion, MonthlyGoal
+from marshmallow import ValidationError
+from schemas import (
+    ma, products_schema, create_order_schema, order_output_schema,
+    create_payment_schema, payment_output_schema, create_feedback_schema,
+    feedback_output_schema, feedbacks_schema, create_journal_entry_schema,
+    journal_entry_output_schema
+)
 import traceback
 import io
 import csv
@@ -70,6 +78,85 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 
 # Ініціалізація бази даних
 db.init_app(app)
+
+# Ініціалізація Marshmallow для валідації
+ma.init_app(app)
+
+# Ініціалізація Swagger для API документації
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec',
+            "route": '/apispec.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/api/docs"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "DailyMood API",
+        "description": "REST API для додатку DailyMood - щоденник настрою, звичок та цілей",
+        "version": "1.0.0",
+        "contact": {
+            "name": "DailyMood Team",
+            "email": "support@dailymood.app"
+        }
+    },
+    "host": "localhost:5000",
+    "basePath": "/",
+    "schemes": ["http"],
+    "securityDefinitions": {
+        "SessionAuth": {
+            "type": "apiKey",
+            "name": "session",
+            "in": "cookie",
+            "description": "Flask session cookie для авторизації"
+        }
+    }
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
+# Реєстрація API Blueprints для версіювання
+from api_blueprints import api_v1, api_v2
+app.register_blueprint(api_v1)
+app.register_blueprint(api_v2)
+
+
+# -------------------- Helper функції --------------------
+def validate_request_data(schema, data=None):
+    """
+    Валідує вхідні дані за допомогою Marshmallow схеми
+    
+    Args:
+        schema: Marshmallow схема для валідації
+        data: Дані для валідації (якщо None, береться request.get_json())
+    
+    Returns:
+        tuple: (validated_data, errors) або (None, error_response)
+    """
+    if data is None:
+        data = request.get_json()
+    
+    if not data:
+        return None, (jsonify({'status': 'error', 'message': 'Відсутні дані в запиті'}), 400)
+    
+    try:
+        validated_data = schema.load(data)
+        return validated_data, None
+    except ValidationError as err:
+        return None, (jsonify({
+            'status': 'error',
+            'message': 'Помилка валідації',
+            'errors': err.messages
+        }), 400)
 
 
 # -------------------- Декоратори авторизації --------------------
@@ -298,6 +385,7 @@ def profile_page():
     return render_template('profile.html')
 
 @app.route('/statistics')
+@login_required
 def statistics():
     """Render statistics page with recent mood analytics.
 
@@ -308,18 +396,23 @@ def statistics():
     - most_common_mood: str
     - mood_data: dict containing dates, values and counts
     """
+    user_id = session.get('user_id')
+    
     # Отримуємо дані за останній місяць — порівнюємо по date() бо MoodEntry.date це Date
     month_ago = (datetime.utcnow() - timedelta(days=30)).date()
     
-    # Кількість записів за місяць
+    # Кількість записів за місяць (тільки для поточного користувача)
     monthly_entries = MoodEntry.query.filter(
+        MoodEntry.user_id == user_id,
         MoodEntry.date >= month_ago
     ).count()
 
-    # Найчастіший настрій (raw key from DB is e.g. 'happy'/'neutral'/'sad')
+    # Найчастіший настрій (тільки для поточного користувача)
     most_common = db.session.query(
         MoodEntry.mood,
         func.count(MoodEntry.mood).label('count')
+    ).filter(
+        MoodEntry.user_id == user_id
     ).group_by(MoodEntry.mood).order_by(
         func.count(MoodEntry.mood).desc()
     ).first()
@@ -332,14 +425,20 @@ def statistics():
         mapping = {
             'happy': 'Щасливий',
             'neutral': 'Нейтральний',
-            'sad': 'Сумний'
+            'sad': 'Сумний',
+            'calm': 'Спокійний',
+            'energetic': 'Енергійний',
+            'anxious': 'Тривожний',
+            'angry': 'Злий',
+            'tired': 'Втомлений'
         }
         return mapping.get(key, key)
 
     most_common_mood = translate_mood_label(raw_most_common)
     
-    # Дані для графіків
+    # Дані для графіків (тільки для поточного користувача)
     entries = MoodEntry.query.filter(
+        MoodEntry.user_id == user_id,
         MoodEntry.date >= month_ago
     ).order_by(MoodEntry.date).all()
     
@@ -630,67 +729,49 @@ def list_entries():
 
 @app.route('/api/journal', methods=['POST'])
 @login_required
+@swag_from('docs/swagger/journal_post.yml')
 def add_entry():
-    """Add a journal entry.
-
-    Expects JSON with at least 'mood', 'date' (ISO YYYY-MM-DD) and 'title'.
-    'activities' may be passed as an array and will be stored as a
-    comma-separated string in the DB. Returns the created entry JSON on
-    success.
-    """
+    """Add a journal entry with validation."""
     try:
         user_id = session['user_id']
-        # Будьте стійкими: якщо клієнт не надсилає JSON, get_json(None) може викинути помилку або повернути None
-        data = request.get_json(silent=True)
-        if not data or not isinstance(data, dict):
-            return jsonify({
-                'status': 'error',
-                'message': 'Невірний формат даних. Очікується JSON з полями: mood, date, title'
-            }), 400
-
-        if not all(k in data for k in ['mood', 'date', 'title']):
-            return jsonify({
-                'status': 'error',
-                'message': 'Необхідні поля: mood, date, title'
-            }), 400
-
-        try:
-            # Конвертуємо ISO рядок дати в Python date
-            date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-            
-            # Конвертуємо список активностей в рядок через кому
-            activities = ','.join(data['activities']) if data.get('activities') else None
-            
-            entry = MoodEntry(
-                mood=data['mood'],
-                date=date,
-                title=data['title'],
-                user_id=user_id,
-                content=data.get('content'),
-                activities=activities
-            )
-            
-            db.session.add(entry)
-            db.session.commit()
-
-            return jsonify({
-                'status': 'success',
-                'message': 'Запис успішно збережено',
-                'data': entry.to_dict()
-            }), 201
-            
-        except ValueError as ve:
-            return jsonify({
-                'status': 'error',
-                'message': str(ve)
-            }), 400
-            
+        
+        # Валідація вхідних даних
+        validated_data, error = validate_request_data(create_journal_entry_schema)
+        if error:
+            return error
+        
+        # Обробка activities: якщо це рядок, розділяємо по комі
+        activities_input = validated_data.get('activities', '')
+        if isinstance(activities_input, str) and activities_input:
+            activities_list = [a.strip() for a in activities_input.split(',') if a.strip()]
+            activities = ','.join(activities_list)
+        else:
+            activities = None
+        
+        entry = MoodEntry(
+            mood=validated_data['mood'],
+            date=validated_data['date'],
+            title=validated_data['title'],
+            user_id=user_id,
+            content=validated_data.get('content'),
+            activities=activities
+        )
+        
+        db.session.add(entry)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Запис успішно збережено',
+            'data': entry.to_dict()
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error adding entry: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': f'Помилка при збереженні: {str(e)}'
+            'message': 'Внутрішня помилка сервера'
         }), 500
 
 @app.route('/api/journal/<int:entry_id>', methods=['PUT'])
@@ -1022,38 +1103,32 @@ def toggle_goal(goal_id):
 
 # -------------------- Feedback API --------------------
 @app.route('/api/feedback', methods=['POST'])
+@swag_from('docs/swagger/feedback_post.yml')
 def create_feedback():
-    """Create a feedback entry.
-
-    Expected JSON: { message: str, name?: str, email?: str, rating?: int }
-    """
+    """Create a feedback entry with validation."""
     try:
-        data = request.get_json(silent=True) or {}
-        msg = (data.get('message') or '').strip()
-        if not msg:
-            return jsonify({'status': 'error', 'message': 'Missing message'}), 400
-
-        name = (data.get('name') or '').strip() or None
-        email = (data.get('email') or '').strip() or None
-        rating = data.get('rating')
-        if rating is not None:
-            try:
-                rating = int(rating)
-            except ValueError:
-                return jsonify({'status':'error','message':'Invalid rating'}), 400
-            if rating < 1 or rating > 5:
-                return jsonify({'status':'error','message':'Rating must be 1..5'}), 400
-
-        fb = Feedback(name=name, email=email, message=msg, rating=rating)
+        # Валідація вхідних даних
+        validated_data, error = validate_request_data(create_feedback_schema)
+        if error:
+            return error
+        
+        fb = Feedback(
+            name=validated_data['name'],
+            email=validated_data['email'],
+            message=validated_data['message'],
+            rating=validated_data.get('rating')
+        )
         db.session.add(fb)
         db.session.commit()
-        return jsonify({'status': 'success', 'data': fb.to_dict()}), 201
+        
+        return jsonify({'status': 'success', 'data': fb.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error creating feedback: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'status': 'error', 'message': 'Внутрішня помилка сервера'}), 500
 
 @app.route('/api/feedback', methods=['GET'])
+@swag_from('docs/swagger/feedback_get.yml')
 def list_feedback():
     """List recent feedback entries (latest 50)."""
     try:
@@ -1080,6 +1155,7 @@ def delete_feedback(feedback_id):
 
 # -------------------- API Продуктів --------------------
 @app.route('/api/products', methods=['GET'])
+@swag_from('docs/swagger/products_get.yml')
 def get_products():
     """Отримати список продуктів (публічно - тільки активні; адмін - всі)."""
     try:
@@ -1192,15 +1268,16 @@ def delete_product(product_id):
 # -------------------- API Замовлень --------------------
 @app.route('/api/orders', methods=['POST'])
 @login_required
+@swag_from('docs/swagger/orders_post.yml')
 def create_order():
     """Створити нове замовлення (потрібен вхід)."""
     try:
-        data = request.get_json(silent=True) or {}
-        items_data = data.get('items', [])
+        # Валідація вхідних даних
+        validated_data, error = validate_request_data(create_order_schema)
+        if error:
+            return error
         
-        if not items_data:
-            return jsonify({'status': 'error', 'message': 'Замовлення повинно містити товари'}), 400
-        
+        items_data = validated_data['items']
         user_id = session['user_id']
         
         # Створюємо замовлення
@@ -1210,13 +1287,16 @@ def create_order():
         
         # Додаємо елементи замовлення
         for item_data in items_data:
-            product_id = item_data.get('product_id')
-            quantity = item_data.get('quantity', 1)
+            product_id = item_data['product_id']
+            quantity = item_data['quantity']
             
             product = Product.query.get(product_id)
             if not product or not product.is_active:
                 db.session.rollback()
-                return jsonify({'status': 'error', 'message': f'Продукт #{product_id} недоступний'}), 400
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Продукт #{product_id} недоступний'
+                }), 404
             
             subtotal = product.price * quantity
             
@@ -1242,7 +1322,7 @@ def create_order():
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error creating order: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'status': 'error', 'message': 'Внутрішня помилка сервера'}), 500
 
 
 @app.route('/api/orders', methods=['GET'])
@@ -1323,6 +1403,7 @@ def delete_order(order_id):
 
 # -------------------- API Оплати --------------------
 @app.route('/api/payments/methods', methods=['GET'])
+@swag_from('docs/swagger/payments_methods_get.yml')
 def get_payment_methods():
     """Отримати доступні методи оплати."""
     methods = [
@@ -1350,32 +1431,44 @@ def get_payment_methods():
 
 @app.route('/api/payments', methods=['POST'])
 @login_required
+@swag_from('docs/swagger/payments_post.yml')
 def create_payment():
     """Створити платіж для замовлення."""
     try:
-        data = request.get_json(silent=True) or {}
-        order_id = data.get('order_id')
-        payment_method = data.get('payment_method', '').strip()
+        # Валідація вхідних даних
+        validated_data, error = validate_request_data(create_payment_schema)
+        if error:
+            return error
         
-        if not order_id or not payment_method:
-            return jsonify({'status': 'error', 'message': 'order_id та payment_method обов\'язкові'}), 400
+        order_id = validated_data['order_id']
+        payment_method = validated_data['payment_method']
         
-        # Перевірка методу оплати
-        valid_methods = ['card', 'online_banking', 'paypal']
-        if payment_method not in valid_methods:
-            return jsonify({'status': 'error', 'message': f'Невірний метод оплати. Дозволені: {", ".join(valid_methods)}'}), 400
+        # Додаткова валідація для картки
+        if payment_method == 'card':
+            required_card_fields = ['card_number', 'card_holder', 'card_expiry', 'card_cvv']
+            missing_fields = [f for f in required_card_fields if f not in validated_data or not validated_data[f]]
+            if missing_fields:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Для оплати карткою обов\'язкові поля: {", ".join(missing_fields)}'
+                }), 400
         
         # Перевірка замовлення
-        order = Order.query.get_or_404(order_id)
-        user = User.query.get(session['user_id'])
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'status': 'error', 'message': 'Замовлення не знайдено'}), 404
         
-        # Перевірка доступу
-        if order.user_id != user.id and not user.is_admin:
-            return jsonify({'status': 'error', 'message': 'Доступ заборонено'}), 403
+        user_id = session['user_id']
+        user = User.query.get(user_id)
         
-        # Перевірка чи вже є оплата
+        # Перевірка чи вже є оплата (для ідемпотентності повертаємо існуючий)
         if order.payment:
-            return jsonify({'status': 'error', 'message': 'Замовлення вже має платіж'}), 400
+            return jsonify({
+                'status': 'success',
+                'message': 'Платіж вже існує для цього замовлення',
+                'payment': order.payment.to_dict(),
+                'order': order.to_dict()
+            }), 200
         
         # Створення платежу
         payment = Payment(
@@ -1387,66 +1480,28 @@ def create_payment():
         
         # Обробка деталей карти
         if payment_method == 'card':
-            card_number = data.get('card_number', '').replace(' ', '').strip()
+            card_number = validated_data['card_number'].replace(' ', '').strip()
             if len(card_number) >= 4:
                 payment.card_last4 = card_number[-4:]
-            payment.card_brand = data.get('card_brand', 'Unknown')
-            
-            # Симуляція обробки платежу (в реальності тут буде інтеграція з платіжним шлюзом)
-            import uuid
-            payment.transaction_id = f"TXN-{uuid.uuid4().hex[:12].upper()}"
-            
-            # Для демо: автоматично підтверджуємо картку
-            payment.status = 'completed'
-            payment.completed_at = datetime.utcnow()
-            
-            # Для цифрових продуктів (Premium) - одразу completed
-            is_digital = any('premium' in (item.product.name or '').lower() or 
-                           'преміум' in (item.product.name or '').lower() 
-                           for item in order.items)
-            order.status = 'completed' if is_digital else 'processing'
-            
-            # Активація Premium для користувача
-            if is_digital:
-                user.is_premium = True
-                logging.info(f"Premium активовано для користувача {user.email}")
+            payment.card_brand = validated_data.get('card_brand', 'Unknown')
         
-        elif payment_method == 'online_banking':
-            # Симуляція банкінгу
-            import uuid
-            payment.transaction_id = f"BANK-{uuid.uuid4().hex[:12].upper()}"
-            payment.status = 'completed'
-            payment.completed_at = datetime.utcnow()
-            
-            # Для цифрових продуктів (Premium) - одразу completed
-            is_digital = any('premium' in (item.product.name or '').lower() or 
-                           'преміум' in (item.product.name or '').lower() 
-                           for item in order.items)
-            order.status = 'completed' if is_digital else 'processing'
-            
-            # Активація Premium для користувача
-            if is_digital:
-                user.is_premium = True
-                logging.info(f"Premium активовано для користувача {user.email}")
+        # Симуляція обробки платежу
+        import uuid
+        prefix = {'card': 'TXN', 'online_banking': 'BANK', 'paypal': 'PP'}.get(payment_method, 'TXN')
+        payment.transaction_id = f"{prefix}-{uuid.uuid4().hex[:12].upper()}"
+        payment.status = 'completed'
+        payment.completed_at = datetime.utcnow()
         
-        elif payment_method == 'paypal':
-            # Симуляція PayPal
-            import uuid
-            payment.transaction_id = f"PP-{uuid.uuid4().hex[:12].upper()}"
-            payment.status = 'completed'
-            payment.completed_at = datetime.utcnow()
-            payment.payment_details = json.dumps({'provider': 'PayPal'})
-            
-            # Для цифрових продуктів (Premium) - одразу completed
-            is_digital = any('premium' in (item.product.name or '').lower() or 
-                           'преміум' in (item.product.name or '').lower() 
-                           for item in order.items)
-            order.status = 'completed' if is_digital else 'processing'
-            
-            # Активація Premium для користувача
-            if is_digital:
-                user.is_premium = True
-                logging.info(f"Premium активовано для користувача {user.email}")
+        # Для цифрових продуктів (Premium) - одразу completed
+        is_digital = any('premium' in (item.product.name or '').lower() or 
+                       'преміум' in (item.product.name or '').lower() 
+                       for item in order.items)
+        order.status = 'completed' if is_digital else 'processing'
+        
+        # Активація Premium для користувача
+        if is_digital and user:
+            user.is_premium = True
+            logging.info(f"Premium активовано для користувача {user.email}")
         
         db.session.add(payment)
         db.session.commit()
@@ -1460,8 +1515,14 @@ def create_payment():
         
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error creating payment: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        logging.error(f"Error creating payment: {e}\n{error_details}")
+        return jsonify({
+            'status': 'error', 
+            'message': 'Внутрішня помилка сервера',
+            'error': str(e) if app.debug else None
+        }), 500
 
 
 @app.route('/api/payments/<int:payment_id>', methods=['GET'])
@@ -1828,6 +1889,112 @@ def activity_recommendations():
     except Exception as e:
         logging.error(f"Activity recommendations error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# ==================== Глобальні Error Handlers ====================
+
+@app.errorhandler(400)
+def bad_request(error):
+    """Обробка 400 Bad Request"""
+    return jsonify({
+        'status': 'error',
+        'code': 'BAD_REQUEST',
+        'message': 'Невалідні дані запиту',
+        'details': str(error)
+    }), 400
+
+
+@app.errorhandler(401)
+def unauthorized(error):
+    """Обробка 401 Unauthorized"""
+    return jsonify({
+        'status': 'error',
+        'code': 'UNAUTHORIZED',
+        'message': 'Потрібна авторизація'
+    }), 401
+
+
+@app.errorhandler(403)
+def forbidden(error):
+    """Обробка 403 Forbidden"""
+    return jsonify({
+        'status': 'error',
+        'code': 'FORBIDDEN',
+        'message': 'Доступ заборонено'
+    }), 403
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Обробка 404 Not Found"""
+    return jsonify({
+        'status': 'error',
+        'code': 'NOT_FOUND',
+        'message': 'Ресурс не знайдено'
+    }), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    """Обробка 405 Method Not Allowed"""
+    return jsonify({
+        'status': 'error',
+        'code': 'METHOD_NOT_ALLOWED',
+        'message': 'HTTP метод не дозволений для цього endpoint'
+    }), 405
+
+
+@app.errorhandler(422)
+def unprocessable_entity(error):
+    """Обробка 422 Unprocessable Entity"""
+    return jsonify({
+        'status': 'error',
+        'code': 'VALIDATION_ERROR',
+        'message': 'Дані не пройшли валідацію',
+        'details': str(error)
+    }), 422
+
+
+@app.errorhandler(429)
+def too_many_requests(error):
+    """Обробка 429 Too Many Requests"""
+    return jsonify({
+        'status': 'error',
+        'code': 'RATE_LIMIT_EXCEEDED',
+        'message': 'Перевищено ліміт запитів. Спробуйте пізніше'
+    }), 429
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    """Обробка 500 Internal Server Error"""
+    logging.error(f"Internal Server Error: {error}")
+    return jsonify({
+        'status': 'error',
+        'code': 'INTERNAL_SERVER_ERROR',
+        'message': 'Внутрішня помилка сервера'
+    }), 500
+
+
+@app.errorhandler(503)
+def service_unavailable(error):
+    """Обробка 503 Service Unavailable"""
+    return jsonify({
+        'status': 'error',
+        'code': 'SERVICE_UNAVAILABLE',
+        'message': 'Сервіс тимчасово недоступний'
+    }), 503
+
+
+@app.errorhandler(ValidationError)
+def handle_marshmallow_validation(error):
+    """Обробка помилок валідації Marshmallow"""
+    return jsonify({
+        'status': 'error',
+        'code': 'VALIDATION_ERROR',
+        'message': 'Помилка валідації даних',
+        'errors': error.messages
+    }), 400
 
 
 if __name__ == '__main__':

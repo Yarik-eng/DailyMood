@@ -1,2 +1,5 @@
 Flask>=2.0.0
 Flask-SQLAlchemy>=3.0.0
+flasgger>=0.9.7.1
+flask-marshmallow>=0.15.0
+marshmallow-sqlalchemy>=0.29.0

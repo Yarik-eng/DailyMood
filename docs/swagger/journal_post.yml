@@ -1,0 +1,90 @@
+Create a mood journal entry
+---
+tags:
+  - Journal
+summary: Створити запис настрою
+description: Додає новий запис до щоденника настрою користувача. Потрібна авторизація.
+security:
+  - SessionAuth: []
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - mood
+        - date
+        - title
+      properties:
+        mood:
+          type: string
+          enum: [happy, calm, energetic, sad, anxious, angry, tired]
+          example: "happy"
+        date:
+          type: string
+          format: date
+          example: "2025-11-27"
+        title:
+          type: string
+          example: "A great day"
+        content:
+          type: string
+          example: "Felt productive and calm"
+        activities:
+          type: string
+          example: "reading,exercise"
+          description: "Активності через кому"
+responses:
+  200:
+    description: Запис успішно створено
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Запис успішно збережено"
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 10
+            user_id:
+              type: integer
+              example: 1
+            mood:
+              type: string
+              example: "happy"
+            mood_emoji:
+              type: string
+              example: "😊"
+            date:
+              type: string
+              format: date
+            title:
+              type: string
+            content:
+              type: string
+            activities:
+              type: array
+              items:
+                type: string
+            created_at:
+              type: string
+              format: date-time
+  400:
+    description: Невалідні дані
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+  401:
+    description: Не авторизовано

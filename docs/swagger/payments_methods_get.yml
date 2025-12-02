@@ -1,0 +1,39 @@
+Get payment methods for an order
+---
+tags:
+  - Payments
+summary: Отримати доступні методи оплати
+description: Повертає список доступних способів оплати для конкретного замовлення
+parameters:
+  - in: query
+    name: order_id
+    type: integer
+    required: true
+    description: ID замовлення
+    example: 11
+responses:
+  200:
+    description: Успішно отримано методи оплати
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        methods:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "card"
+              name:
+                type: string
+                example: "Банківська картка"
+              description:
+                type: string
+                example: "Visa, Mastercard, American Express"
+              icon:
+                type: string
+                example: "💳"

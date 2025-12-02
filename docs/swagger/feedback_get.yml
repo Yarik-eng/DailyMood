@@ -1,0 +1,32 @@
+Get all feedback
+---
+tags:
+  - Feedback
+summary: Отримати список відгуків
+description: Повертає всі відгуки користувачів
+responses:
+  200:
+    description: Успішно отримано список відгуків
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 8
+          name:
+            type: string
+            example: "Tester"
+          email:
+            type: string
+            example: "tester@example.com"
+          message:
+            type: string
+            example: "Great app!"
+          rating:
+            type: integer
+            example: 5
+          created_at:
+            type: string
+            format: date-time

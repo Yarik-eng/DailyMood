@@ -1,0 +1,256 @@
+{
+  "info": {
+    "name": "DailyMood API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dailymood-api-collection"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{authEmail}}\",\n  \"password\": \"{{authPassword}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// If login fails (e.g., user not found), try to register and then login",
+              "if (pm.response.code !== 200) {",
+              "  const creds = { email: pm.collectionVariables.get('authEmail'), password: pm.collectionVariables.get('authPassword') };",
+              "  pm.sendRequest({",
+              "    url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
+              "    method: 'POST',",
+              "    header: { 'Content-Type': 'application/json' },",
+              "    body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "  }, function (err, res) {",
+              "    // Attempt login again regardless",
+              "    pm.sendRequest({",
+              "      url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "      method: 'POST',",
+              "      header: { 'Content-Type': 'application/json' },",
+              "      body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "    }, function () { /* Cookie stored by Postman automatically */ });",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+      }
+    },
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"items\": [{ \"product_id\": 1, \"quantity\": 1 }]\n}" },
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Auto-login if 401",
+              "const creds = { email: pm.collectionVariables.get('authEmail'), password: pm.collectionVariables.get('authPassword') };",
+              "pm.sendRequest({",
+              "  url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "}, function(err, res) {",
+              "  if (res && res.code !== 200) {",
+              "    pm.sendRequest({",
+              "      url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
+              "      method: 'POST',",
+              "      header: { 'Content-Type': 'application/json' },",
+              "      body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "    }, function() {",
+              "      pm.sendRequest({",
+              "        url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "      }, function() {});",
+              "    });",
+              "  }",
+              "});",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "try {",
+              "  const json = pm.response.json();",
+              "  if (json && json.order && json.order.id) {",
+              "    pm.collectionVariables.set('orderId', json.order.id);",
+              "    console.log('orderId set to', json.order.id);",
+              "  }",
+              "} catch (e) {",
+              "  console.warn('Failed to parse Create Order response', e);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Payment Methods",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/payments/methods?order_id={{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","payments","methods"], "query":[{"key":"order_id","value":"{{orderId}}"}] }
+      }
+    },
+    {
+      "name": "Create Payment (card)",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"order_id\": {{orderId}},\n  \"payment_method\": \"card\",\n  \"card_number\": \"4242424242424242\",\n  \"card_holder\": \"Test User\",\n  \"card_expiry\": \"12/29\",\n  \"card_cvv\": \"123\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/payments", "host": ["{{baseUrl}}"], "path": ["api","payments"] }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Auto-login",
+              "const creds = { email: pm.collectionVariables.get('authEmail'), password: pm.collectionVariables.get('authPassword') };",
+              "pm.sendRequest({",
+              "  url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "}, function(err, res) {",
+              "  if (res && res.code !== 200) {",
+              "    pm.sendRequest({",
+              "      url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
+              "      method: 'POST',",
+              "      header: { 'Content-Type': 'application/json' },",
+              "      body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "    }, function() {",
+              "      pm.sendRequest({",
+              "        url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "      }, function() {});",
+              "    });",
+              "  }",
+              "});",
+              "",
+              "// Ensure orderId exists; if missing, create an order inline",
+              "if (!pm.collectionVariables.get('orderId')) {",
+              "  const createOrderReq = {",
+              "    url: pm.collectionVariables.get('baseUrl') + '/api/orders',",
+              "    method: 'POST',",
+              "    header: { 'Content-Type': 'application/json' },",
+              "    body: { mode: 'raw', raw: JSON.stringify({ items: [{ product_id: 1, quantity: 1 }] }) }",
+              "  };",
+              "  pm.sendRequest(createOrderReq, function (err, res) {",
+              "    if (err) {",
+              "      console.warn('Auto Create Order failed', err);",
+              "      return;",
+              "    }",
+              "    try {",
+              "      const data = res.json();",
+              "      if (data && data.order && data.order.id) {",
+              "        pm.collectionVariables.set('orderId', data.order.id);",
+              "        console.log('Auto-created orderId', data.order.id);",
+              "      }",
+              "    } catch (e) {",
+              "      console.warn('Parse error in auto Create Order', e);",
+              "    }",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Feedback",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Tester\",\n  \"email\": \"tester@example.com\",\n  \"message\": \"Great app!\",\n  \"rating\": 5\n}" },
+        "url": { "raw": "{{baseUrl}}/api/feedback", "host": ["{{baseUrl}}"], "path": ["api","feedback"] }
+      }
+    },
+    {
+      "name": "List Feedback",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/feedback", "host": ["{{baseUrl}}"], "path": ["api","feedback"] }
+      }
+    },
+    {
+      "name": "Create Mood Entry",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"mood\": \"happy\",\n  \"date\": \"2025-11-27\",\n  \"title\": \"A great day\",\n  \"content\": \"Felt productive and calm\",\n  \"activities\": \"reading,exercise\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/journal", "host": ["{{baseUrl}}"], "path": ["api","journal"] }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Auto-login",
+              "const creds = { email: pm.collectionVariables.get('authEmail'), password: pm.collectionVariables.get('authPassword') };",
+              "pm.sendRequest({",
+              "  url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "}, function(err, res) {",
+              "  if (res && res.code !== 200) {",
+              "    pm.sendRequest({",
+              "      url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
+              "      method: 'POST',",
+              "      header: { 'Content-Type': 'application/json' },",
+              "      body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "    }, function() {",
+              "      pm.sendRequest({",
+              "        url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify(creds) }",
+              "      }, function() {});",
+              "    });",
+              "  }",
+              "});",
+              ""
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "orderId", "value": "1" },
+    { "key": "authEmail", "value": "tester@example.com" },
+    { "key": "authPassword", "value": "test123" }
+  ]
+}

@@ -1,0 +1,102 @@
+Create a payment for an order
+---
+tags:
+  - Payments
+summary: Створити платіж для замовлення
+description: Обробляє платіж для замовлення. Підтримує картки, онлайн-банкінг та PayPal. Потрібна авторизація.
+security:
+  - SessionAuth: []
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - order_id
+        - payment_method
+      properties:
+        order_id:
+          type: integer
+          example: 11
+        payment_method:
+          type: string
+          enum: [card, online_banking, paypal]
+          example: "card"
+        card_number:
+          type: string
+          example: "4242424242424242"
+          description: "Обов'язкове для payment_method=card"
+        card_holder:
+          type: string
+          example: "Test User"
+        card_expiry:
+          type: string
+          example: "12/29"
+        card_cvv:
+          type: string
+          example: "123"
+responses:
+  201:
+    description: Платіж успішно створено
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Платіж створено успішно"
+        payment:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 5
+            order_id:
+              type: integer
+              example: 11
+            payment_method:
+              type: string
+              example: "card"
+            amount:
+              type: number
+              example: 99.0
+            status:
+              type: string
+              example: "completed"
+            transaction_id:
+              type: string
+              example: "TXN-96350395995B"
+            card_last4:
+              type: string
+              example: "4242"
+            completed_at:
+              type: string
+              format: date-time
+        order:
+          type: object
+          properties:
+            id:
+              type: integer
+            status:
+              type: string
+              example: "completed"
+            total_amount:
+              type: number
+  400:
+    description: Невалідні дані або замовлення вже оплачено
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "order_id та payment_method обов'язкові"
+  401:
+    description: Не авторизовано
+  404:
+    description: Замовлення не знайдено
