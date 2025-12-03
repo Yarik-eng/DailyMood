@@ -90,12 +90,7 @@ class CreatePaymentSchema(ma.Schema):
     card_holder = fields.Str(validate=validate.Length(min=1, max=200))
     card_expiry = fields.Str(validate=validate.Regexp(r'^\d{2}/\d{2}$', error='Формат: MM/YY'))
     card_cvv = fields.Str(validate=validate.Regexp(r'^\d{3,4}$', error='CVV повинен бути 3-4 цифри'))
-
-    @validates('card_number')
-    def validate_card_number(self, value):
-        """Валідація номера картки (тільки цифри)"""
-        if value and not re.match(r'^\d{13,19}$', value):
-            raise ValidationError('Номер картки повинен містити 13-19 цифр')
+    card_brand = fields.Str(validate=validate.Length(max=20))
 
     @validates_schema
     def validate_card_fields(self, data, **kwargs):

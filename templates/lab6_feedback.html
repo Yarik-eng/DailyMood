@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Лабораторна №6 — Простий клієнт до API{% endblock %}
+
+{% block content %}
+<section class="lab6-wrapper">
+  <div class="lab6-card">
+    <h1>Лабораторна робота №6</h1>
+    <p class="lab6-lead">
+      Ця сторінка взаємодіє з REST API відгуків: показує останні записи та дозволяє додавати нові через просту форму.
+    </p>
+
+    <div id="lab6Message" class="lab6-message" hidden></div>
+
+    <div class="lab6-grid">
+      <div class="lab6-column">
+        <div class="lab6-column-header">
+          <h2>Список відгуків</h2>
+          <button id="lab6Reload" type="button">Оновити</button>
+        </div>
+        <ul id="feedbackList" class="lab6-list">
+          <li class="lab6-placeholder">Завантаження даних...</li>
+        </ul>
+      </div>
+
+      <div class="lab6-column">
+        <h2>Додати новий відгук</h2>
+        <form id="lab6Form" class="lab6-form">
+          <label>
+            Ім'я
+            <input type="text" name="name" required maxlength="100" placeholder="Ваше ім'я">
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" required maxlength="200" placeholder="you@example.com">
+          </label>
+          <label>
+            Оцінка (1-5)
+            <select name="rating">
+              <option value="">Без оцінки</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+          <label>
+            Повідомлення
+            <textarea name="message" rows="4" required maxlength="2000" placeholder="Поділіться враженням"></textarea>
+          </label>
+          <button type="submit">Надіслати відгук</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .lab6-wrapper {
+    padding: 2rem 1rem 3rem;
+    background: linear-gradient(180deg, rgba(99,102,241,0.08), transparent 40%);
+  }
+  .lab6-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.85);
+    border-radius: 1.25rem;
+    box-shadow: 0 25px 60px rgba(15,23,42,0.15);
+    padding: 2.5rem;
+    backdrop-filter: blur(6px);
+  }
+  .dark .lab6-card {
+    background: rgba(15,23,42,0.7);
+    box-shadow: 0 25px 60px rgba(2,6,23,0.6);
+  }
+  .lab6-card h1 {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+  .lab6-lead {
+    margin-bottom: 1.5rem;
+    color: rgba(15,23,42,0.7);
+  }
+  .dark .lab6-lead {
+    color: rgba(248,250,252,0.8);
+  }
+  .lab6-message {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+  }
+  .lab6-message.success { background: #ecfccb; color: #14532d; }
+  .dark .lab6-message.success { background: rgba(22,101,52,0.3); color: #bbf7d0; }
+  .lab6-message.error { background: #fee2e2; color: #7f1d1d; }
+  .dark .lab6-message.error { background: rgba(127,29,29,0.35); color: #fecaca; }
+  .lab6-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .lab6-column {
+    background: rgba(255,255,255,0.9);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(15,23,42,0.05);
+  }
+  .dark .lab6-column {
+    background: rgba(15,23,42,0.75);
+    border-color: rgba(148,163,184,0.15);
+  }
+  .lab6-column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .lab6-column-header button {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: none;
+    background: var(--profile-accent, #6366f1);
+    color: var(--profile-accent-contrast, #fff);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  .lab6-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .lab6-list li {
+    border-radius: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(248,250,252,0.8);
+    border: 1px solid rgba(15,23,42,0.07);
+  }
+  .dark .lab6-list li {
+    background: rgba(15,23,42,0.6);
+    border-color: rgba(148,163,184,0.2);
+  }
+  .lab6-meta {
+    font-size: 0.8rem;
+    color: rgba(15,23,42,0.6);
+    margin-bottom: 0.35rem;
+  }
+  .dark .lab6-meta {
+    color: rgba(226,232,240,0.7);
+  }
+  .lab6-placeholder,
+  .lab6-error {
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(15,23,42,0.7);
+  }
+  .dark .lab6-placeholder,
+  .dark .lab6-error {
+    color: rgba(226,232,240,0.75);
+  }
+  .lab6-list strong { display: block; font-size: 0.95rem; }
+  .lab6-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .lab6-form label {
+    font-size: 0.9rem;
+    color: rgba(15,23,42,0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .dark .lab6-form label { color: rgba(248,250,252,0.85); }
+  .lab6-form input,
+  .lab6-form select,
+  .lab6-form textarea {
+    border-radius: 0.65rem;
+    border: 1px solid rgba(15,23,42,0.15);
+    padding: 0.65rem 0.75rem;
+    font-size: 0.95rem;
+    background: rgba(255,255,255,0.95);
+  }
+  .dark .lab6-form input,
+  .dark .lab6-form select,
+  .dark .lab6-form textarea {
+    background: rgba(15,23,42,0.8);
+    border-color: rgba(148,163,184,0.3);
+    color: #f8fafc;
+  }
+  .lab6-form button {
+    margin-top: 0.5rem;
+    border: none;
+    border-radius: 0.85rem;
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(120deg, #6366f1, #8b5cf6);
+    color: #fff;
+    transition: transform 0.15s ease;
+  }
+  .lab6-form button:hover { transform: translateY(-2px); }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const listEl = document.getElementById('feedbackList');
+    const formEl = document.getElementById('lab6Form');
+    const messageEl = document.getElementById('lab6Message');
+    const reloadBtn = document.getElementById('lab6Reload');
+
+    const showMessage = (type, text) => {
+      messageEl.textContent = text;
+      messageEl.className = `lab6-message ${type}`;
+      messageEl.hidden = false;
+    };
+
+    const clearMessage = () => {
+      messageEl.textContent = '';
+      messageEl.className = 'lab6-message';
+      messageEl.hidden = true;
+    };
+
+    const renderList = (items) => {
+      if (!items.length) {
+        listEl.innerHTML = '<li class="lab6-placeholder">Ще немає жодного відгуку. Станьте першим!</li>';
+        return;
+      }
+      listEl.innerHTML = items.map(item => {
+        const when = item.created_at ? new Date(item.created_at).toLocaleString() : '—';
+        const rating = item.rating ? `⭐ ${item.rating}/5` : 'Без оцінки';
+        return `
+          <li>
+            <strong>${item.name || 'Анонім'}</strong>
+            <div class="lab6-meta">${rating} · ${when}</div>
+            <p>${item.message || ''}</p>
+          </li>
+        `;
+      }).join('');
+    };
+
+    const loadFeedback = async () => {
+      listEl.innerHTML = '<li class="lab6-placeholder">Завантаження даних...</li>';
+      try {
+        const res = await fetch('/api/feedback');
+        if (!res.ok) {
+          throw new Error('Не вдалося отримати список відгуків');
+        }
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        renderList(items);
+      } catch (error) {
+        listEl.innerHTML = `<li class="lab6-error">${error.message}</li>`;
+      }
+    };
+
+    formEl.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearMessage();
+
+      const formData = new FormData(formEl);
+      const payload = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        message: formData.get('message'),
+      };
+      const ratingValue = formData.get('rating');
+      if (ratingValue) {
+        payload.rating = Number(ratingValue);
+      }
+
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Не вдалося зберегти відгук');
+        }
+        formEl.reset();
+        showMessage('success', 'Відгук успішно надіслано!');
+        loadFeedback();
+      } catch (error) {
+        showMessage('error', error.message || 'Сталася помилка. Спробуйте ще раз.');
+      }
+    });
+
+    reloadBtn.addEventListener('click', loadFeedback);
+    loadFeedback();
+  });
+</script>
+{% endblock %}

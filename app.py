@@ -353,6 +353,11 @@ def index():
 def about():
     return render_template('about.html')
 
+@app.route('/lab6')
+def lab6_demo():
+    """Проста сторінка для лабораторної №6 з формою та списком ресурсів."""
+    return render_template('lab6_feedback.html')
+
 @app.route('/favorites')
 def favorites():
     return render_template('favorites.html')
@@ -1467,11 +1472,12 @@ def create_payment():
         user = User.query.get(user_id)
         
         # Перевірка чи вже є оплата (для ідемпотентності повертаємо існуючий)
-        if order.payment:
+        existing_payment = Payment.query.filter_by(order_id=order.id).first()
+        if existing_payment:
             return jsonify({
                 'status': 'success',
                 'message': 'Платіж вже існує для цього замовлення',
-                'payment': order.payment.to_dict(),
+                'payment': existing_payment.to_dict(),
                 'order': order.to_dict()
             }), 200
         

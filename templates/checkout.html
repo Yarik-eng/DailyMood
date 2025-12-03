@@ -351,6 +351,9 @@
 
       if(selectedMethod === 'card'){
         payload.card_number = cardNumberInput.value.replace(/\s/g, '');
+        payload.card_holder = cardHolderInput.value.trim();
+        payload.card_expiry = cardExpiryInput.value.trim();
+        payload.card_cvv = cardCVVInput.value.trim();
         payload.card_brand = detectCardBrand(payload.card_number);
       }
 

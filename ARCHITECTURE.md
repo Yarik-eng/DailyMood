@@ -121,11 +121,15 @@ status: String(50) — pending, completed, failed, refunded
 amount: Float
 transaction_id: String(255) — унікальний ID транзакції
 card_last4: String(4) (nullable)
-card_brand: String(20) (nullable) — Visa, Mastercard
+card_brand: String(20) (nullable) — Visa, Mastercard, тощо
 payment_details: Text (nullable) — JSON з додатковими даними
 created_at: DateTime
 completed_at: DateTime (nullable)
 ```
+
+**Валідація карток:**
+- Поля `card_number`, `card_holder`, `card_expiry`, `card_cvv`, `card_brand` обов'язкові тільки якщо `payment_method = 'card'`
+- Використовується `@validates_schema` для conditional validation
 
 **Зв'язки:**
 - `order` → One-to-One з `Order`
@@ -142,13 +146,15 @@ mood: String(32) — VALID_MOODS = ['happy', 'neutral', 'sad']
 date: Date
 title: String(200)
 content: Text (nullable)
-activities: String(500) (nullable) — comma-separated
+activities: String(500) (nullable) — comma-separated (внутрішнє зберігання)
 created_at: DateTime
 ```
 
 **Методи:**
 - `get_mood_emoji()` — повертає 😊 / 😐 / 😢
 - `to_dict()` — конвертує activities у масив
+
+**Важливо:** API приймає `activities` як масив рядків `["exercise", "meditation"]`, але зберігає як comma-separated string в БД.
 
 ---
 
@@ -207,20 +213,24 @@ created_at: DateTime
   4. Зберігає в БД
 
 #### `POST /api/payments`
-- **Body:** `{ order_id, payment_method, card_number?, card_expiry?, card_cvv? }`
+- **Body:** `{ order_id, payment_method, card_number?, card_holder?, card_expiry?, card_cvv?, card_brand? }`
 - **Логіка:**
-  1. Створює `Payment` зі статусом `pending`
-  2. **Card:** зберігає `card_last4`, `card_brand`, генерує `transaction_id`
-  3. **PayPal:** генерує `transaction_id = PP-xxx`, статус `completed`
-  4. **Online banking:** `transaction_id = OB-xxx`
-  5. Якщо продукт містить "premium/преміум" → `user.is_premium = True`
-  6. Для цифрових продуктів → `order.status = completed`
-  7. Для фізичних → `order.status = processing`
+  1. **Idempotency check:** Перевіряє чи існує платіж через `Payment.query.filter_by(order_id=order.id).first()` (не через `order.payment` щоб уникнути lazy loading issues)
+  2. Створює `Payment` зі статусом `pending`
+  3. **Card:** зберігає `card_last4`, `card_brand`, генерує `transaction_id`
+  4. **PayPal:** генерує `transaction_id = PP-xxx`, статус `completed`
+  5. **Online banking:** `transaction_id = OB-xxx`
+  6. Якщо продукт містить "premium/преміум" → `user.is_premium = True`
+  7. Для цифрових продуктів → `order.status = completed`
+  8. Для фізичних → `order.status = processing`
 
 **Методи оплати:**
 ```python
 ['card', 'online_banking', 'paypal']
 ```
+
+**Валідація card полів:**
+- Усі поля (`card_number`, `card_holder`, `card_expiry`, `card_cvv`, `card_brand`) обов'язкові якщо `payment_method = 'card'`
 
 ---
 
@@ -266,9 +276,11 @@ created_at: DateTime
 - Фільтрує `MoodEntry` за параметрами
 - Повертає масив записів у форматі `to_dict()`
 
-#### `POST /api/entries`
+#### `POST /api/entries` (або `/api/journal`)
 - **Body:** `{ mood, date, title, content?, activities? }`
-- **Валідація:** `mood` мусить бути в `MoodEntry.VALID_MOODS`
+- **Валідація:** 
+  - `mood` мусить бути в `['happy', 'neutral', 'sad']`
+  - `activities` — масив рядків `["exercise", "meditation"]` (не string!)
 - Створює новий `MoodEntry`
 
 #### `PUT /api/entries/<id>`
@@ -384,6 +396,11 @@ Order (1) ←→ (1) Payment
 **Файл:** `app.py` → `create_payment()`
 
 ```python
+# Idempotency: перевірка існуючого платежу
+existing_payment = Payment.query.filter_by(order_id=order.id).first()
+if existing_payment:
+    return jsonify({"status": "success", "message": "Payment already exists"})
+
 # Перевірка чи є digital Premium product
 for item in order.items:
     if 'premium' in item.product.name.lower() or 'преміум' in item.product.name.lower():
@@ -398,6 +415,10 @@ else:
     order.status = 'processing'
 ```
 
+**Важливе виправлення:**
+- Використовується `Payment.query.filter_by(order_id=order.id).first()` замість `order.payment`
+- Причина: Уникнення SQLAlchemy lazy loading issues з backref
+
 ### Валідація Настроїв
 **Файл:** `models.py` → `MoodEntry.__init__()`
 
@@ -406,6 +427,21 @@ VALID_MOODS = ['happy', 'neutral', 'sad']
 
 if mood not in self.VALID_MOODS:
     raise ValueError(f'Недійсне значення настрою. Допустимі: {", ".join(self.VALID_MOODS)}')
+```
+
+**Схема валідації API:**
+- **Файл:** `schemas.py` → `CreateJournalEntrySchema`
+- `mood` — `fields.Str(validate=validate.OneOf(['happy', 'neutral', 'sad']))`
+- `activities` — `fields.List(fields.Str())` (масив, не string!)
+
+**Приклад правильного запиту:**
+```json
+{
+  "mood": "happy",
+  "date": "2025-12-03",
+  "title": "Great day",
+  "activities": ["exercise", "meditation"]
+}
 ```
 
 ### Рекомендації за Настроєм
@@ -569,9 +605,13 @@ python scripts/seed_products.py
 DailyMood3.0/
 ├── app.py                  # Головний Flask додаток
 ├── models.py               # SQLAlchemy моделі
+├── schemas.py              # Marshmallow validation schemas
 ├── requirements.txt        # Python залежності
 ├── run.bat                 # Windows launcher
 ├── ARCHITECTURE.md         # Цей файл
+├── README.md               # Документація з screenshots
+├── lab-reports/            # Звіти лабораторних робіт
+├── postman/                # Postman колекція для API тестування
 ├── scripts/
 │   ├── init_db.py         # Ініціалізація БД
 │   └── seed_products.py   # Тестові продукти
@@ -585,7 +625,10 @@ DailyMood3.0/
 │   ├── statistics.html    # Статистика
 │   ├── goals.html         # Цілі
 │   ├── about.html         # Про нас + фідбек
-│   └── favorites.html     # Обране
+│   ├── favorites.html     # Обране
+│   ├── lab6_feedback.html # Lab 6 API demo
+│   ├── checkout.html      # Оформлення замовлення
+│   └── admin_*.html       # Адмін-панелі
 ├── static/
 │   ├── style.css          # Головні стилі
 │   ├── script.js          # Головний JS
@@ -627,6 +670,26 @@ DailyMood3.0/
 - Запуск dev-сервера (`if __name__ == '__main__'`)
 
 **Залежності:** `models.py`, Flask, SQLAlchemy, bcrypt
+
+---
+
+#### `schemas.py`
+**Призначення:** Marshmallow схеми для валідації API запитів/відповідей  
+**Задачі:**
+- Валідаційні схеми для всіх API endpoints:
+  - `CreateJournalEntrySchema` — валідація mood entries (mood OneOf, activities List)
+  - `CreatePaymentSchema` — conditional validation для card fields через `@validates_schema`
+  - `ProductSchema` — валідація типів продуктів
+  - `OrderSchema`, `FeedbackSchema`, тощо
+- Використовується через helper функцію `validate_request_data()` в `app.py`
+- Marshmallow 3.x з `fields.List()`, `validate.OneOf()`, `validate.Length()`
+
+**Ключові виправлення:**
+- `CreateJournalEntrySchema.activities` — `fields.List(fields.Str())` замість `fields.Str()`
+- `CreatePaymentSchema` — додане поле `card_brand`, видалений конфліктний `@validates('card_number')`
+- `ProductSchema.type` — оновлено OneOf з актуальними типами продуктів
+
+**Залежності:** marshmallow 3.x
 
 ---
 
@@ -873,6 +936,20 @@ python scripts/seed_products.py
 - Список улюблених записів настрою
 - Додавання/видалення з обраного
 - localStorage для збереження
+
+---
+
+#### `templates/lab6_feedback.html`
+**Призначення:** Lab 6 демонстраційна сторінка для взаємодії з Feedback API  
+**Задачі:**
+- **GET /api/feedback:** Завантаження списку відгуків з кнопкою оновлення
+- **POST /api/feedback:** Форма створення нового відгуку (name, email, message, rating)
+- Відображення повідомлень про успіх/помилку
+- Adaptive styling з dark mode підтримкою
+- Inline CSS та JavaScript (vanilla JS з async/await)
+- i18n-ready структура
+
+**Маршрут:** `/lab6`
 
 ---
 
