@@ -123,26 +123,25 @@ def create_feedback(): ...
 
 ### Форма зворотного зв'язку
 
-lab-reports\screenshot\feedback.png
+![POST feedback](lab-reports\screenshot\feedback.png)
 
 ### Каталог товарів
 
-lab-reports\screenshot\catalog.png
+![POST catalog](lab-reports\screenshot\catalog.png)
 
 ### Адміністративна панель
 
-lab-reports\screenshot\admin_panel.png
+![POST admin_panel](lab-reports\screenshot\admin_panel.png)
 
 ### Управління замовленнями
 
-lab-reports\screenshot\panel_product.png
-
+![POST avatar](lab-reports\screenshot\avatar.png)
 
 ### Додаткова функціональність
 
-lab-reports\screenshot\rec.png
+![POST rec](lab-reports\screenshot\rec.png)
 
-lab-reports\screenshot\avatar.png
+![POST avatar](lab-reports\screenshot\avatar.png)
 
 ## Тестування
 1. Додавання нового відгуку та перегляд у адмін‑панелі

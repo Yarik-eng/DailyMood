@@ -2,7 +2,7 @@
 Marshmallow схеми для валідації API запитів та серіалізації відповідей
 """
 from flask_marshmallow import Marshmallow
-from marshmallow import fields, validates, ValidationError, validate
+from marshmallow import fields, validates, validates_schema, ValidationError, validate
 import re
 
 ma = Marshmallow()
@@ -14,7 +14,16 @@ class ProductSchema(ma.Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1, max=200))
     description = fields.Str(validate=validate.Length(max=1000))
     price = fields.Float(required=True, validate=validate.Range(min=0))
-    type = fields.Str(required=True, validate=validate.OneOf(['subscription', 'course', 'template']))
+    type = fields.Str(
+        required=True,
+        validate=validate.OneOf([
+            'subscription',
+            'quote_pack',
+            'theme',
+            'journal_template',
+            'habit_course'
+        ])
+    )
     slug = fields.Str(dump_only=True)
     is_active = fields.Bool()
     created_at = fields.DateTime(dump_only=True)
@@ -88,6 +97,25 @@ class CreatePaymentSchema(ma.Schema):
         if value and not re.match(r'^\d{13,19}$', value):
             raise ValidationError('Номер картки повинен містити 13-19 цифр')
 
+    @validates_schema
+    def validate_card_fields(self, data, **kwargs):
+        """Переконуємось, що для картки передано всі обов'язкові поля."""
+        if data.get('payment_method') == 'card':
+            missing = []
+            for field in ['card_number', 'card_holder', 'card_expiry', 'card_cvv']:
+                if not data.get(field):
+                    missing.append(field)
+            if missing:
+                raise ValidationError({field: 'Поле обов\'язкове для оплати карткою' for field in missing})
+        else:
+            # Якщо інший метод оплати, забороняємо передавати дані картки
+            unexpected = [
+                field for field in ['card_number', 'card_holder', 'card_expiry', 'card_cvv']
+                if data.get(field)
+            ]
+            if unexpected:
+                raise ValidationError({field: 'Поле дозволено тільки для payment_method=card' for field in unexpected})
+
     class Meta:
         ordered = True
 
@@ -138,12 +166,12 @@ class CreateJournalEntrySchema(ma.Schema):
     """Схема для створення запису настрою"""
     mood = fields.Str(
         required=True,
-        validate=validate.OneOf(['happy', 'calm', 'energetic', 'sad', 'anxious', 'angry', 'tired'])
+        validate=validate.OneOf(['happy', 'neutral', 'sad'])
     )
     date = fields.Date(required=True)
     title = fields.Str(required=True, validate=validate.Length(min=1, max=200))
     content = fields.Str(validate=validate.Length(max=5000))
-    activities = fields.Str(validate=validate.Length(max=500))
+    activities = fields.List(fields.Str())
 
     class Meta:
         ordered = True

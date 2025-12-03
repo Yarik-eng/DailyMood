@@ -735,16 +735,21 @@ def add_entry():
     try:
         user_id = session['user_id']
         
+        # Debug: логування вхідних даних
+        logging.info(f"Received journal data: {request.get_json()}")
+        
         # Валідація вхідних даних
         validated_data, error = validate_request_data(create_journal_entry_schema)
         if error:
+            logging.error(f"Validation error: {error}")
             return error
         
-        # Обробка activities: якщо це рядок, розділяємо по комі
-        activities_input = validated_data.get('activities', '')
-        if isinstance(activities_input, str) and activities_input:
-            activities_list = [a.strip() for a in activities_input.split(',') if a.strip()]
-            activities = ','.join(activities_list)
+        # Обробка activities: конвертуємо список в comma-separated string
+        activities_input = validated_data.get('activities', [])
+        if isinstance(activities_input, list) and activities_input:
+            activities = ','.join(activities_input)
+        elif isinstance(activities_input, str) and activities_input:
+            activities = activities_input
         else:
             activities = None
         

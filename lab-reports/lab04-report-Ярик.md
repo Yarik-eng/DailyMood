@@ -179,14 +179,13 @@ class Order(db.Model):
 
 ## Скріншоти
 - Форма відгуку — 
-![alt text](image-1.png)
+![POST feedback](lab-reports\screenshot\feedback.png)
 - Каталог продуктів / Оплата — 
-![alt text](image-2.png)
-![alt text](image-3.png)
+![POST catalog](lab-reports\screenshot\catalog.png)
 - Адмін‑панель — 
-![alt text](image-4.png)
+![POST admin_panel](lab-reports\screenshot\admin_panel.png)
 - Статистика/Mood Predictor — 
-![alt text](image-5.png)
+![]	
 ## Тестування
 1. Додавання відгуку та перегляд у адмін‑панелі
 2. Створення замовлення і проведення «оплати» у демо‑режимі

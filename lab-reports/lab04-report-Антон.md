@@ -228,7 +228,28 @@ rows = db.session.execute(
 - Антон: тестування інтерфейсу (цей звіт)
 
 ## Скріншоти
-- Додати під час захисту (форми, оплата, адмін‑панель, статистика)
+
+### Форма зворотного зв'язку
+
+![POST feedback](lab-reports\screenshot\feedback.png)
+
+### Каталог товарів
+
+![POST catalog](lab-reports\screenshot\catalog.png)
+
+### Адміністративна панель
+
+![POST admin_panel](lab-reports\screenshot\admin_panel.png)
+
+### Управління замовленнями
+
+![POST avatar](lab-reports\screenshot\avatar.png)
+
+### Додаткова функціональність
+
+![POST rec](lab-reports\screenshot\rec.png)
+
+![POST avatar](lab-reports\screenshot\avatar.png)
 
 ## Тестування
 1. Додавання відгуку та перегляд у адмін‑панелі
