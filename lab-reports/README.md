@@ -362,7 +362,7 @@ DailyMood3.0/
 ## 📸 Скріншоти
 
 ### Головна сторінка ЛР6
-![lab6-main](lab-reports/screenshots/Головна_сторінка_ЛР6.png)
+![GET Products](lab-reports/screenshots/Головна_сторінка_ЛР6.png)
 
 ### Порожній список
 ![lab6-empty](lab-reports/screenshots/пустий_список.png)
