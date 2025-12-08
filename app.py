@@ -79,6 +79,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 # Ініціалізація бази даних
 db.init_app(app)
 
+
+# Health check endpoint for container orchestration
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok'}), 200
+
 # Ініціалізація Marshmallow для валідації
 ma.init_app(app)
 
