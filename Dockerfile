@@ -22,7 +22,7 @@ RUN mkdir -p /app/data
 ENV FLASK_APP=app.py \
     FLASK_RUN_HOST=0.0.0.0 \
     FLASK_RUN_PORT=5000 \
-    DATABASE_URL=sqlite:///data/dailymood.db \
+    DATABASE_URL=sqlite:////app/data/dailymood.db \
     SECRET_KEY=change-me
 
 EXPOSE 5000
@@ -32,11 +32,12 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=5s \
     CMD curl -f http://127.0.0.1:5000/health || exit 1
 
 # Create entrypoint script for initialization
-RUN echo '#!/bin/sh\n\
-set -e\n\
-echo "Initializing database..."\n\
-python -c "from app import db, app; app.app_context().push(); db.create_all(); print(\"Database initialized successfully\")"\n\
-echo "Starting gunicorn..."\n\
-exec gunicorn -b 0.0.0.0:5000 app:app' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo 'echo "Initializing database..."' >> /app/entrypoint.sh && \
+    echo 'python -c "from app import db, app; app.app_context().push(); db.create_all(); print(\"Database initialized successfully\")"' >> /app/entrypoint.sh && \
+    echo 'echo "Starting gunicorn..."' >> /app/entrypoint.sh && \
+    echo 'exec gunicorn -b 0.0.0.0:5000 app:app' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
