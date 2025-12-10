@@ -1,5 +1,5 @@
 """
-Скрипт для створення адміністратора DailyMood.
+Скрипт для створення адміністратора DailyMood та базових продуктів.
 
 Використання:
     python scripts/create_admin.py
@@ -15,7 +15,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
-from models import User
+from models import User, Product
 
 def create_admin(email='admin@dailymood.com', password='admin123'):
     """
@@ -51,18 +51,69 @@ def create_admin(email='admin@dailymood.com', password='admin123'):
             print(f'   Пароль: {password}')
             print(f'   is_admin: True')
 
+
+def create_sample_products():
+    """Створити базові продукти для магазину."""
+    with app.app_context():
+        # Перевіряємо чи вже існують продукти
+        if Product.query.count() > 0:
+            print('\n✅ Продукти вже існують у базі.')
+            return
+        
+        sample_products = [
+            {
+                'name': 'Премиум підписка',
+                'slug': 'premium-subscription',
+                'type': 'premium',
+                'description': 'Розблокуйте всі преміум-функції на 1 місяць',
+                'price': 99.99
+            },
+            {
+                'name': 'Мотиваційні цитати',
+                'slug': 'motivation-quotes',
+                'type': 'quote_pack',
+                'description': 'Збірка 500+ мотиваційних цитат',
+                'price': 9.99
+            },
+            {
+                'name': 'Тема Ніч',
+                'slug': 'dark-theme',
+                'type': 'theme',
+                'description': 'Темна тема для комфортного використання вночі',
+                'price': 4.99
+            },
+            {
+                'name': 'Шаблон планування',
+                'slug': 'planning-template',
+                'type': 'journal_template',
+                'description': 'Готові шаблони для планування дня',
+                'price': 2.99
+            }
+        ]
+        
+        for product_data in sample_products:
+            product = Product(**product_data)
+            db.session.add(product)
+        
+        db.session.commit()
+        print(f'\n✅ Створено {len(sample_products)} базових продуктів:')
+        for p in sample_products:
+            print(f'   - {p["name"]} ({p["slug"]}) - {p["price"]} грн')
+
 if __name__ == '__main__':
     print('🔧 Створення адміністратора DailyMood...\n')
     
-    # Можна передати email та пароль як аргументи
-    if len(sys.argv) >= 3:
-        email = sys.argv[1]
-        password = sys.argv[2]
-        create_admin(email, password)
-    else:
-        print('Використовуються стандартні credentials:')
-        print('Email: admin@dailymood.com')
-        print('Пароль: admin123\n')
-        create_admin()
+    import argparse
+    parser = argparse.ArgumentParser(description='Створити адміністратора DailyMood')
+    parser.add_argument('--email', default='admin@dailymood.com', help='Email адміна (за замовчуванням: admin@dailymood.com)')
+    parser.add_argument('--password', default='admin123', help='Пароль адміна (за замовчуванням: admin123)')
+    
+    args = parser.parse_args()
+    
+    print(f'Email: {args.email}')
+    print(f'Пароль: {args.password}\n')
+    
+    create_admin(args.email, args.password)
+    create_sample_products()
     
     print('\n💡 Тепер ви можете увійти через /auth/login')

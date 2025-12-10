@@ -76,6 +76,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Секретний ключ для сесій (в продакшені використовуйте змінну середовища)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Конфігурація сесії та cookies
+app.config['SESSION_COOKIE_SECURE'] = False  # На розробці, в продакшені встановити True (HTTPS)
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Захист від XSS
+app.config['SESSION_COOKIE_SAMESITE'] = None  # Розробка: без обмежень
+app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 днів
+
 # Ініціалізація бази даних
 db.init_app(app)
 
@@ -348,8 +354,29 @@ def internal_error(error):
 
 @app.before_request
 def before_request():
-    """Log each request."""
+    """Log each request and set up user context."""
     logging.info(f"Request: {request.method} {request.url}")
+    
+    # Встановлюємо поточного користувача для використання у шаблонах
+    if 'user_id' in session:
+        from flask import g
+        g.user = User.query.get(session['user_id'])
+    else:
+        from flask import g
+        g.user = None
+
+@app.after_request
+def after_request(response):
+    """Add headers to allow cookies and CORS."""
+    # Дозволяємо cookies при запитах з того ж домену
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    
+    # Додаємо явне вказання браузеру зберігати cookies
+    logging.debug(f"Response: {response.status} for {request.path}")
+    return response
 
 @app.route('/')
 def index():
@@ -604,7 +631,8 @@ def login():
             logging.debug('Не вдалося оновити кеш користувача після входу, буде використана поточна модель')
         
         session['user_id'] = user.id
-        logging.info('Login success for %s', email)
+        session.permanent = True
+        logging.info('Login success for %s (session set: %s)', email, session.get('user_id'))
         
         return jsonify({'status': 'success', 'message': 'Вхід успішний', 'user': user.to_dict()}), 200
         
@@ -628,15 +656,32 @@ def logout():
 @app.route('/api/me', methods=['GET'])
 def get_current_user():
     """Отримати дані поточного користувача."""
+    logging.debug(f"GET /api/me - session keys: {list(session.keys())}, user_id: {session.get('user_id')}")
+    logging.debug(f"GET /api/me - request cookies: {request.cookies}")
+    
     if 'user_id' not in session:
+        logging.warning(f"GET /api/me - no user_id in session. Session: {dict(session)}")
         return jsonify({'status': 'error', 'message': 'Не авторизовано'}), 401
     
     user = User.query.get(session['user_id'])
     if not user:
+        logging.warning(f"GET /api/me - user {session['user_id']} not found in DB")
         session.pop('user_id', None)
         return jsonify({'status': 'error', 'message': 'Користувач не знайдений'}), 404
     
+    logging.info(f"GET /api/me - user found: {user.email}")
     return jsonify({'status': 'success', 'user': user.to_dict()}), 200
+
+
+@app.route('/api/session-debug', methods=['GET'])
+def session_debug():
+    """Debug: перевіримо, яка сесія на сервері."""
+    return jsonify({
+        'session_keys': list(session.keys()),
+        'user_id': session.get('user_id'),
+        'cookies': dict(request.cookies),
+        'all_session': dict(session)
+    }), 200
 
 
 @app.route('/api/avatars', methods=['GET'])
