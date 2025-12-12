@@ -34,8 +34,9 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=5s \
 # Create entrypoint script for initialization
 RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'set -e' >> /app/entrypoint.sh && \
-    echo 'echo "Initializing database..."' >> /app/entrypoint.sh && \
-    echo 'python -c "from app import db, app; app.app_context().push(); db.create_all(); print(\"Database initialized successfully\")"' >> /app/entrypoint.sh && \
+    echo 'echo "Checking database..."' >> /app/entrypoint.sh && \
+    echo '# db.create_all() тільки створює таблиці, якщо їх немає - не видаляє існуючі дані' >> /app/entrypoint.sh && \
+    echo 'python -c "from app import db, app; app.app_context().push(); db.create_all(); print(\"Database ready\")"' >> /app/entrypoint.sh && \
     echo 'echo "Starting gunicorn..."' >> /app/entrypoint.sh && \
     echo 'exec gunicorn -b 0.0.0.0:5000 app:app' >> /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
