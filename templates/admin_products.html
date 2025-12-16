@@ -215,12 +215,19 @@
   async function deleteProduct(id){
     if(!confirm(t('confirm_delete_product'))) return;
     try {
-  const r = await fetch(`/api/products/${id}`, { method: 'DELETE', credentials: 'include' });
-      if(!r.ok) throw new Error('Bad response');
+      const r = await fetch(`/api/products/${id}`, { 
+        method: 'DELETE', 
+        credentials: 'include',
+        headers: {'Content-Type': 'application/json'}
+      });
+      if(!r.ok){
+        const errData = await r.json();
+        throw new Error(errData.message || 'Bad response');
+      }
       loadProducts();
     } catch(err){
       console.error('Delete failed', err);
-      alert(t('delete_failed'));
+      alert(t('delete_failed') + ': ' + err.message);
     }
   }
 

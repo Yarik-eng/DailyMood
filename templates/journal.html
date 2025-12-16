@@ -14,8 +14,12 @@
                     <label for="mood"><span data-i18n="mood">Настрій:</span></label>
                     <select name="mood" id="mood" required>
                         <option value="happy" data-i18n="mood_happy">😊 Щасливий</option>
+                        <option value="excited" data-i18n="mood_excited">🤩 Збуджений</option>
                         <option value="neutral" data-i18n="mood_neutral">😐 Нейтральний</option>
+                        <option value="calm" data-i18n="mood_calm">😌 Спокійний</option>
+                        <option value="angry" data-i18n="mood_angry">😠 Сердитий</option>
                         <option value="sad" data-i18n="mood_sad">😢 Сумний</option>
+                        <option value="disappointed" data-i18n="mood_disappointed">😔 Розчарований</option>
                     </select>
                 </div>
                 
@@ -33,6 +37,36 @@
                     <label for="content"><span data-i18n="content">Опис дня:</span></label>
                     <textarea id="content" name="content" rows="5" 
                               placeholder="Що сталося сьогодні? Що вплинуло на ваш настрій?" data-i18n="content_placeholder"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="sleep_quality" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span data-i18n="sleep_quality">Якість сну:</span>
+                        <span id="sleepQualityLabel" style="font-size: 20px;">😐</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>😴</span>
+                        <input type="range" id="sleep_quality" name="sleep_quality" min="1" max="4" value="2" class="sleep-slider">
+                        <span>😴✨</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: inherit; margin-top: 8px; opacity: 0.85;">
+                        <span data-i18n="sleep_terrible">Жахливо</span>
+                        <span data-i18n="sleep_bad">Погано</span>
+                        <span data-i18n="sleep_good">Добре</span>
+                        <span data-i18n="sleep_excellent">Супер</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sleep_hours" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span data-i18n="sleep_hours">Кількість годин сну:</span>
+                        <span id="sleepHoursLabel" style="font-weight: 700; color: var(--profile-accent);">7 год</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>0</span>
+                        <input type="range" id="sleep_hours" name="sleep_hours" min="0" max="12" value="7" step="0.5" class="sleep-hours-slider" style="flex: 1;">
+                        <span>12</span>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -62,6 +96,38 @@
                             <input type="checkbox" name="activities" value="work">
                             <span data-i18n="activity_work">💼 Робота</span>
                         </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="games">
+                            <span data-i18n="activity_games">🎮 Ігри</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="music">
+                            <span data-i18n="activity_music">🎵 Музика</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="creativity">
+                            <span data-i18n="activity_creativity">🎨 Творчість</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="cooking">
+                            <span data-i18n="activity_cooking">🍔 Готування</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="sleep">
+                            <span data-i18n="activity_sleep">💤 Сон</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="movies">
+                            <span data-i18n="activity_movies">🎬 Кіно/ТВ</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="social_media">
+                            <span data-i18n="activity_social_media">📱 Соціальні мережі</span>
+                        </label>
+                        <label class="activity-item">
+                            <input type="checkbox" name="activities" value="shopping">
+                            <span data-i18n="activity_shopping">🛍️ Шопінг</span>
+                        </label>
                     </div>
                 </div>
 
@@ -76,8 +142,12 @@
                 <select id="moodFilter">
                     <option value="" data-i18n="all_moods">Всі настрої</option>
                     <option value="happy" data-i18n="mood_happy">😊 Щасливий</option>
+                    <option value="excited" data-i18n="mood_excited">🤩 Збуджений</option>
                     <option value="neutral" data-i18n="mood_neutral">😐 Нейтральний</option>
+                    <option value="calm" data-i18n="mood_calm">😌 Спокійний</option>
+                    <option value="angry" data-i18n="mood_angry">😠 Сердитий</option>
                     <option value="sad" data-i18n="mood_sad">😢 Сумний</option>
+                    <option value="disappointed" data-i18n="mood_disappointed">😔 Розчарований</option>
                 </select>
             </div>
             
@@ -109,6 +179,28 @@
         } catch (e) { return iso; }
     }
 
+    // Якість сну ползунок
+    const sleepSlider = document.getElementById('sleep_quality');
+    const sleepLabel = document.getElementById('sleepQualityLabel');
+    const sleepEmojis = ['😴', '😐', '😊', '😴✨'];
+    
+    sleepSlider.addEventListener('input', (e) => {
+        sleepLabel.style.animation = 'none';
+        setTimeout(() => {
+            sleepLabel.textContent = sleepEmojis[e.target.value - 1];
+            sleepLabel.style.animation = 'emojiPop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+        }, 10);
+    });
+
+    // Кількість годин сну ползунок
+    const sleepHoursSlider = document.getElementById('sleep_hours');
+    const sleepHoursLabel = document.getElementById('sleepHoursLabel');
+    
+    sleepHoursSlider.addEventListener('input', (e) => {
+        const hours = parseFloat(e.target.value);
+        sleepHoursLabel.textContent = hours.toFixed(1) + ' год';
+    });
+
     // Обробка відправки форми
     document.getElementById('journalForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -121,6 +213,8 @@
             date: formData.get('date'),
             title: formData.get('title'),
             content: formData.get('content'),
+            sleep_quality: formData.get('sleep_quality'),
+            sleep_hours: parseFloat(formData.get('sleep_hours')),
             activities: activities
         };
 
@@ -161,12 +255,17 @@
             const entries = await response.json();
 
             const entriesList = document.getElementById('entriesList');
+            const sleepQualityLabels = {1: 'Жахливо', 2: 'Погано', 3: 'Добре', 4: 'Супер'};
+            
             entriesList.innerHTML = entries.map(entry => `
                 <article class="journal-entry mood-${entry.mood}" data-id="${entry.id}">
                     <header>
                         <div class="entry-header-left">
                             <h3>${entry.title}</h3>
-                            <time datetime="${entry.date}">${formatDateForLang(entry.date)}</time>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <time datetime="${entry.date}">${formatDateForLang(entry.date)}</time>
+                                ${entry.sleep_quality ? `<span style="font-size: 13px; opacity: 0.8;">💤 ${sleepQualityLabels[entry.sleep_quality] || 'N/A'}</span>` : ''}
+                            </div>
                         </div>
                         <div class="entry-header-right">
                             <button class="btn-link delete-entry" data-id="${entry.id}" title="${t('delete') || 'Видалити'}">${t('delete') || 'Видалити'}</button>

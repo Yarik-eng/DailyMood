@@ -1,0 +1,365 @@
+/* 🎄 Новорічна тема 2025 🎄 */
+
+/* Сніжинки */
+@keyframes snowfall {
+  0% {
+    transform: translateY(-10px) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(20px);
+    opacity: 0.3;
+  }
+}
+
+.snowflake {
+  position: fixed;
+  top: -10px;
+  color: #fff;
+  font-size: 1.2em;
+  pointer-events: none;
+  z-index: 9998;
+  animation: snowfall linear infinite;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+}
+
+/* Гірлянда */
+.christmas-lights {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-around;
+  padding: 0 20px;
+}
+
+.light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  animation: blink 1.5s infinite;
+  box-shadow: 0 0 20px currentColor;
+}
+
+.light::before {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  width: 2px;
+  height: 15px;
+  background: #333;
+  transform: translateX(-50%);
+}
+
+.light:nth-child(1) { background: #ff0000; animation-delay: 0s; }
+.light:nth-child(2) { background: #00ff00; animation-delay: 0.2s; }
+.light:nth-child(3) { background: #0000ff; animation-delay: 0.4s; }
+.light:nth-child(4) { background: #ffff00; animation-delay: 0.6s; }
+.light:nth-child(5) { background: #ff00ff; animation-delay: 0.8s; }
+.light:nth-child(6) { background: #00ffff; animation-delay: 1s; }
+.light:nth-child(7) { background: #ff6600; animation-delay: 0.3s; }
+.light:nth-child(8) { background: #ff0099; animation-delay: 0.5s; }
+.light:nth-child(9) { background: #00ff99; animation-delay: 0.7s; }
+.light:nth-child(10) { background: #9900ff; animation-delay: 0.9s; }
+.light:nth-child(11) { background: #ff3300; animation-delay: 0.1s; }
+.light:nth-child(12) { background: #33ff00; animation-delay: 0.4s; }
+.light:nth-child(13) { background: #0033ff; animation-delay: 0.8s; }
+.light:nth-child(14) { background: #ffcc00; animation-delay: 1.2s; }
+.light:nth-child(15) { background: #cc00ff; animation-delay: 0.6s; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* 🎄 Кнопка-ялинка в хедері (перемикач теми) */
+.christmas-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-left: 12px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  z-index: 5;
+}
+
+.christmas-toggle:focus-visible {
+  outline: 2px solid rgba(255, 215, 0, 0.6);
+  outline-offset: 2px;
+}
+
+.christmas-toggle:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.christmas-toggle__tree {
+  display: block;
+  width: 60px;
+  height: 68px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: filter 0.3s ease;
+}
+
+.christmas-toggle.is-on .christmas-toggle__tree {
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+}
+
+/* Лампочки на SVG ялинці */
+.christmas-toggle__bulb {
+  transition: opacity 0.3s ease, fill 0.3s ease;
+  opacity: 0.6;
+}
+
+/* Кольори лампочок тільки коли тема увімкнена */
+.christmas-toggle.is-on .christmas-toggle__bulb {
+  opacity: 1;
+  animation: blink 1.5s infinite;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.christmas-toggle.is-on .bulb-1 { fill: #ff0000; color: #ff0000; animation-delay: 0s; }
+.christmas-toggle.is-on .bulb-2 { fill: #00ff00; color: #00ff00; animation-delay: 0.15s; }
+.christmas-toggle.is-on .bulb-3 { fill: #0000ff; color: #0000ff; animation-delay: 0.3s; }
+.christmas-toggle.is-on .bulb-4 { fill: #ffff00; color: #ffff00; animation-delay: 0.45s; }
+.christmas-toggle.is-on .bulb-5 { fill: #ff00ff; color: #ff00ff; animation-delay: 0.6s; }
+.christmas-toggle.is-on .bulb-6 { fill: #00ffff; color: #00ffff; animation-delay: 0.75s; }
+.christmas-toggle.is-on .bulb-7 { fill: #ffa500; color: #ffa500; animation-delay: 0.9s; }
+.christmas-toggle.is-on .bulb-8 { fill: #adff2f; color: #adff2f; animation-delay: 1.05s; }
+
+/* Ялинка в кутку */
+.christmas-tree {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-size: 60px;
+  z-index: 9997;
+  pointer-events: none;
+  animation: treeGlow 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 0, 0.5));
+}
+
+@keyframes treeGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(0, 255, 0, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+  }
+}
+
+/* Новорічний фон */
+body.christmas-theme {
+  background: linear-gradient(180deg, #0a1128 0%, #1e3a5f 50%, #2c5f8d 100%);
+  position: relative;
+}
+
+body.christmas-theme::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(2px 2px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent),
+    radial-gradient(1px 1px at 66% 33%, white, transparent);
+  background-size: 200% 200%;
+  background-position: 0% 0%;
+  opacity: 0.6;
+  animation: twinkle 10s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Адаптація контенту під новорічну тему */
+.christmas-theme .container,
+.christmas-theme main,
+.christmas-theme .content {
+  position: relative;
+  z-index: 10;
+}
+
+/* Новорічні кнопки */
+.christmas-theme button,
+.christmas-theme .btn {
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.christmas-theme button:hover,
+.christmas-theme .btn:hover {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  border-color: rgba(255, 215, 0, 0.8);
+}
+
+/* Сніговик (опціонально, можна вимкнути) */
+.snowman {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  font-size: 40px;
+  z-index: 9997;
+  pointer-events: none;
+  animation: snowmanWave 3s ease-in-out infinite;
+}
+
+@keyframes snowmanWave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+/* === Новорічні декорації для nav-drawer === */
+
+/* Гірлянда вгорі drawer */
+.christmas-drawer-lights {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 8px 12px 0;
+}
+
+/* Снігова підлога внизу drawer */
+.christmas-drawer-snow-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.christmas-drawer-snow-floor svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Сніговик внизу drawer */
+.christmas-drawer-snowman {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.snowman-svg {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+/* Анімація махання рукою */
+.snowman-waving-arm {
+  transform-origin: 84px 90px;
+  animation: snowmanWave 2s ease-in-out infinite;
+}
+
+@keyframes snowmanWave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-15deg); }
+  50% { transform: rotate(5deg); }
+  75% { transform: rotate(-15deg); }
+}
+
+/* Новорічний банер (опціонально) */
+.christmas-banner {
+  background: linear-gradient(90deg, #c41e3a 0%, #165b33 50%, #c41e3a 100%);
+  color: white;
+  text-align: center;
+  padding: 10px;
+  font-weight: bold;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  z-index: 9996;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  animation: bannerSlide 20s linear infinite;
+  background-size: 200% 100%;
+}
+
+@keyframes bannerSlide {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.dark .christmas-lights .light::before {
+  background: #666;
+}
+
+/* Мобільна адаптація */
+@media (max-width: 768px) {
+  .christmas-tree {
+    font-size: 40px;
+    bottom: 10px;
+    right: 10px;
+  }
+  
+  .snowman {
+    font-size: 30px;
+    bottom: 10px;
+    left: 10px;
+  }
+  
+  .christmas-lights {
+    height: 40px;
+  }
+  
+  .light {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .snowflake {
+    font-size: 0.9em;
+  }
+}
+
+/* Вимкнення анімацій для користувачів з prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .snowflake,
+  .light,
+  .christmas-tree,
+  .snowman,
+  .christmas-toggle.is-on .christmas-toggle__bulb,
+  body.christmas-theme::before {
+    animation: none;
+  }
+}

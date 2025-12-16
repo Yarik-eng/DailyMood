@@ -15,6 +15,7 @@ The code below uses SQLAlchemy models defined in `models.py` (MoodEntry).
 """
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask_session import Session
 from flasgger import Swagger, swag_from
 from functools import wraps
 import time
@@ -66,11 +67,18 @@ PREMIUM_AVATARS = ['unicorn', 'dragon', 'koi', 'phoenix', 'crown', 'crystal', 'm
 
 app.config['AVAILABLE_AVATARS'] = AVAILABLE_AVATARS
 
-# Configure database: use SQLite file in data/ directory
+# Configure database: prefer env `DATABASE_URL` (PostgreSQL in production), fallback to SQLite file
 basedir = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(basedir, 'data', 'dailymood.db')
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+# Use DATABASE_URL or SQLALCHEMY_DATABASE_URI if provided, otherwise SQLite
+env_db_url = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI')
+if env_db_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = env_db_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Секретний ключ для сесій (в продакшені використовуйте змінну середовища)
@@ -82,9 +90,17 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Захист від XSS
 app.config['SESSION_COOKIE_SAMESITE'] = None  # Розробка: без обмежень
 app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 днів
 
+# Конфігурація постійного збереження сесій на диск
+session_dir = os.path.join(basedir, 'data', 'sessions')
+os.makedirs(session_dir, exist_ok=True)
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_FILE_DIR'] = session_dir
+
 # Ініціалізація бази даних
 db.init_app(app)
-
+# Ініціалізація постійної сесії (filesystem)
+Session(app)
 
 # Health check endpoint for container orchestration
 @app.route('/health', methods=['GET'])
@@ -177,7 +193,12 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            return jsonify({'status': 'error', 'message': 'Потрібна авторизація'}), 401
+            # Для API-роутів повертаємо 401 JSON
+            if request.path.startswith('/api/') or request.is_json:
+                return jsonify({'status': 'error', 'message': 'Потрібна авторизація'}), 401
+            # Для HTML-сторінок — редірект на сторінку входу
+            next_url = request.path
+            return redirect(url_for('login') + f"?next={next_url}")
         return f(*args, **kwargs)
     return decorated_function
 
@@ -288,6 +309,19 @@ def ensure_user_premium_columns():
         logging.error("Не вдалося гарантувати наявність колонок преміум у users: %s", exc)
 
 
+def ensure_user_advice_unlock_column():
+    """Додає колонку advice_unlock_once для одноразового скидання блокування поради."""
+    try:
+        inspector = inspect(db.engine)
+        columns = {col['name'] for col in inspector.get_columns('users')}
+        if 'advice_unlock_once' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE users ADD COLUMN advice_unlock_once BOOLEAN NOT NULL DEFAULT 0'))
+            logging.info("Додано колонку advice_unlock_once до таблиці users")
+    except Exception as exc:
+        logging.error("Не вдалося гарантувати наявність advice_unlock_once у users: %s", exc)
+
+
 def ensure_mood_entry_user_id():
     """Додає колонку user_id до mood_entries, якщо її немає."""
     try:
@@ -321,9 +355,17 @@ def ensure_mood_entry_user_id():
 
 with app.app_context():
     db.create_all()
-    ensure_user_avatar_column()
-    ensure_user_premium_columns()
-    ensure_mood_entry_user_id()
+    # Виконуємо допоміжні ALTER-и лише для SQLite (локальні оновлення схеми)
+    try:
+        if db.engine.dialect.name == 'sqlite':
+            ensure_user_avatar_column()
+            ensure_user_premium_columns()
+            ensure_user_advice_unlock_column()
+            ensure_mood_entry_user_id()
+        else:
+            logging.info("Skipping SQLite-specific schema helpers for %s", db.engine.dialect.name)
+    except Exception:
+        logging.exception("Failed running schema helpers")
 
 @app.errorhandler(404)
 def not_found_error(error):
@@ -380,7 +422,16 @@ def after_request(response):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    advice_unlock_once = False
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            advice_unlock_once = user.advice_unlock_once
+            # Reset the flag if it was used
+            if advice_unlock_once:
+                user.advice_unlock_once = False
+                db.session.commit()
+    return render_template('index.html', advice_unlock_once=advice_unlock_once)
 
 @app.route('/about')
 def about():
@@ -435,6 +486,7 @@ def statistics():
     - mood_data: dict containing dates, values and counts
     """
     user_id = session.get('user_id')
+    lang = request.args.get('lang', 'uk')  # Get language from URL param or default to uk
     
     # Отримуємо дані за останній місяць — порівнюємо по date() бо MoodEntry.date це Date
     month_ago = (datetime.utcnow() - timedelta(days=30)).date()
@@ -456,23 +508,38 @@ def statistics():
     ).first()
     raw_most_common = most_common.mood if most_common else None
 
-    # Допоміжна функція: перекладаємо внутрішні ключі настрою на українські мітки для відображення
-    def translate_mood_label(key):
+    # Допоміжна функція: перекладаємо внутрішні ключі настрою на мітки для відображення
+    def translate_mood_label(key, lang='uk'):
         if not key:
-            return 'Немає даних'
+            return 'Немає даних' if lang == 'uk' else 'No data'
+        
         mapping = {
-            'happy': 'Щасливий',
-            'neutral': 'Нейтральний',
-            'sad': 'Сумний',
-            'calm': 'Спокійний',
-            'energetic': 'Енергійний',
-            'anxious': 'Тривожний',
-            'angry': 'Злий',
-            'tired': 'Втомлений'
+            'uk': {
+                'happy': 'Щасливий',
+                'neutral': 'Нейтральний',
+                'sad': 'Сумний',
+                'calm': 'Спокійний',
+                'energetic': 'Енергійний',
+                'anxious': 'Тривожний',
+                'angry': 'Злий',
+                'tired': 'Втомлений'
+            },
+            'en': {
+                'happy': 'Happy',
+                'neutral': 'Neutral',
+                'sad': 'Sad',
+                'calm': 'Calm',
+                'energetic': 'Energetic',
+                'anxious': 'Anxious',
+                'angry': 'Angry',
+                'tired': 'Tired'
+            }
         }
-        return mapping.get(key, key)
+        
+        lang_mapping = mapping.get(lang, mapping['uk'])
+        return lang_mapping.get(key, key)
 
-    most_common_mood = translate_mood_label(raw_most_common)
+    most_common_mood = translate_mood_label(raw_most_common, lang)
     
     # Дані для графіків (тільки для поточного користувача)
     entries = MoodEntry.query.filter(
@@ -480,10 +547,16 @@ def statistics():
         MoodEntry.date >= month_ago
     ).order_by(MoodEntry.date).all()
     
+    mood_labels = {
+        'uk': ['Щасливий', 'Нейтральний', 'Сумний'],
+        'en': ['Happy', 'Neutral', 'Sad']
+    }
+    moods = mood_labels.get(lang, mood_labels['uk'])
+    
     mood_data = {
         'dates': [e.date.strftime('%Y-%m-%d') for e in entries],
         'values': [1 if e.mood == 'happy' else 0.5 if e.mood == 'neutral' else 0 for e in entries],
-        'moods': ['Щасливий', 'Нейтральний', 'Сумний'],
+        'moods': moods,
         'counts': [
             sum(1 for e in entries if e.mood == 'happy'),
             sum(1 for e in entries if e.mood == 'neutral'),
@@ -495,13 +568,41 @@ def statistics():
         avg_val = sum(mood_data['values']) / len(mood_data['values'])
         # Map average value to nearest category: >0.66 -> happy, >0.33 -> neutral, else sad
         if avg_val > 0.66:
-            average_mood = translate_mood_label('happy')
+            average_mood = translate_mood_label('happy', lang)
         elif avg_val > 0.33:
-            average_mood = translate_mood_label('neutral')
+            average_mood = translate_mood_label('neutral', lang)
         else:
-            average_mood = translate_mood_label('sad')
+            average_mood = translate_mood_label('sad', lang)
     else:
         average_mood = '—'
+
+    # Статистика сну
+    sleep_entries = MoodEntry.query.filter(
+        MoodEntry.user_id == user_id,
+        MoodEntry.date >= month_ago,
+        MoodEntry.sleep_hours != None
+    ).all()
+    
+    sleep_stats = {
+        'total_nights': len(sleep_entries),
+        'average_hours': 0,
+        'best_night': 0,
+        'worst_night': 0,
+        'average_quality': 0
+    }
+    
+    if sleep_entries:
+        sleep_hours_list = [e.sleep_hours for e in sleep_entries if e.sleep_hours]
+        sleep_quality_list = [e.sleep_quality for e in sleep_entries if e.sleep_quality]
+        
+        if sleep_hours_list:
+            sleep_stats['average_hours'] = sum(sleep_hours_list) / len(sleep_hours_list)
+            sleep_stats['best_night'] = max(sleep_hours_list)
+            sleep_stats['worst_night'] = min(sleep_hours_list)
+        
+        if sleep_quality_list:
+            quality_avg = sum(sleep_quality_list) / len(sleep_quality_list)
+            sleep_stats['average_quality'] = round(quality_avg, 1)
 
     # Quote-related stats are client-side in many deployments; provide safe defaults
     quotes_count = 0
@@ -514,6 +615,7 @@ def statistics():
                          most_common_mood=most_common_mood,
                          average_mood=average_mood,
                          mood_data=mood_data,
+                         sleep_stats=sleep_stats,
                          quotes_count=quotes_count,
                          favorite_quotes_count=favorite_quotes_count,
                          daily_quote=daily_quote,
@@ -809,13 +911,37 @@ def add_entry():
         else:
             activities = None
         
+        # Обробка даних про сон
+        sleep_quality = validated_data.get('sleep_quality')
+        sleep_hours = validated_data.get('sleep_hours')
+        
+        # Валідація sleep_quality (1-4)
+        if sleep_quality is not None:
+            try:
+                sleep_quality = int(sleep_quality)
+                if not (1 <= sleep_quality <= 4):
+                    sleep_quality = None
+            except (ValueError, TypeError):
+                sleep_quality = None
+        
+        # Валідація sleep_hours (0-12)
+        if sleep_hours is not None:
+            try:
+                sleep_hours = float(sleep_hours)
+                if not (0 <= sleep_hours <= 12):
+                    sleep_hours = None
+            except (ValueError, TypeError):
+                sleep_hours = None
+        
         entry = MoodEntry(
             mood=validated_data['mood'],
             date=validated_data['date'],
             title=validated_data['title'],
             user_id=user_id,
             content=validated_data.get('content'),
-            activities=activities
+            activities=activities,
+            sleep_quality=sleep_quality,
+            sleep_hours=sleep_hours
         )
         
         db.session.add(entry)
@@ -1024,9 +1150,12 @@ def stats_trends():
 
 # -------------------- API Звичок & Цілей --------------------
 @app.route('/api/habits', methods=['GET'])
+@login_required
 def get_habits():
     try:
-        habits = Habit.query.order_by(Habit.id).all()
+        user_id = session['user_id']
+        # Оптимізація: отримуємо тільки активні habits користувача
+        habits = Habit.query.filter_by(user_id=user_id).order_by(Habit.id).all()
         today = datetime.utcnow().date()
         month_ago = today - timedelta(days=29)
 
@@ -1218,17 +1347,10 @@ def delete_feedback(feedback_id):
 @app.route('/api/products', methods=['GET'])
 @swag_from('docs/swagger/products_get.yml')
 def get_products():
-    """Отримати список продуктів (публічно - тільки активні; адмін - всі)."""
+    """Отримати список продуктів (тільки активні)."""
     try:
-        is_admin_user = False
-        if 'user_id' in session:
-            user = User.query.get(session['user_id'])
-            is_admin_user = user and user.is_admin
-        
-        if is_admin_user:
-            products = Product.query.order_by(Product.created_at.desc()).all()
-        else:
-            products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).all()
+        # Всі користувачі (адмін і звичайні) бачать тільки активні продукти
+        products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).all()
         
         return jsonify([p.to_dict() for p in products]), 200
     except Exception as e:
@@ -1313,17 +1435,22 @@ def update_product(product_id):
 @app.route('/api/products/<int:product_id>', methods=['DELETE'])
 @admin_required
 def delete_product(product_id):
-    """Видалити продукт (тільки адмін). Для безпеки краще деактивувати замість фізичного видалення."""
+    """Видалити продукт з магазину (тільки адмін). Soft delete - деактивуємо."""
     try:
-        product = Product.query.get_or_404(product_id)
-        # Замість видалення деактивуємо (якщо продукт вже в замовленнях)
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'status': 'error', 'message': 'Продукт не знайдено'}), 404
+        
+        # Soft delete - позначаємо як неактивний (保留в БД для історії замовлень)
         product.is_active = False
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Продукт деактивовано', 'id': product_id}), 200
+        
+        logging.info(f"Product {product_id} deactivated by user {session.get('user_id')}")
+        return jsonify({'status': 'success', 'message': 'Продукт видалено з магазину', 'id': product_id}), 200
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error deleting product: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        logging.error(f"Error deleting product {product_id}: {e}")
+        return jsonify({'status': 'error', 'message': f'Помилка видалення: {str(e)}'}), 500
 
 
 # -------------------- API Замовлень --------------------
@@ -1393,12 +1520,21 @@ def get_orders():
     try:
         user = User.query.get(session['user_id'])
         
-        if user.is_admin:
-            orders = Order.query.order_by(Order.created_at.desc()).all()
-        else:
-            orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+        limit = min(limit, 100)  # max 100 orders per page
         
-        return jsonify([o.to_dict(include_items=False) for o in orders]), 200
+        if user.is_admin:
+            paginated = Order.query.order_by(Order.created_at.desc()).paginate(page=page, per_page=limit, error_out=False)
+        else:
+            paginated = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).paginate(page=page, per_page=limit, error_out=False)
+        
+        return jsonify({
+            'orders': [o.to_dict(include_items=False) for o in paginated.items],
+            'page': page,
+            'total': paginated.total,
+            'pages': paginated.pages
+        }), 200
     except Exception as e:
         logging.error(f"Error listing orders: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -1649,10 +1785,17 @@ def update_payment_status(payment_id):
 def admin_list_users():
     """Повернути список усіх користувачів з їх ролями."""
     try:
-        users = User.query.order_by(User.created_at.asc()).all()
+        # Пагінація для списку користувачів (max 50 на сторінку)
+        page = request.args.get('page', 1, type=int)
+        limit = min(int(request.args.get('limit', 50, type=int)), 50)
+        paginated = User.query.order_by(User.created_at.asc()).paginate(page=page, per_page=limit, error_out=False)
+        users = paginated.items
         return jsonify({
             'status': 'success',
-            'users': [u.to_dict() for u in users]
+            'users': [u.to_dict() for u in users],
+            'page': page,
+            'total': paginated.total,
+            'pages': paginated.pages
         }), 200
     except Exception as e:
         logging.error(f"Error listing users: {e}")
@@ -1751,6 +1894,21 @@ def admin_delete_user(user_id):
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error deleting user: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/<int:user_id>/reset-advice-lock', methods=['POST'])
+@admin_required
+def admin_reset_advice_lock(user_id):
+    """Дозволити користувачу отримати ще одну пораду сьогодні (один раз)."""
+    try:
+        user = User.query.get_or_404(user_id)
+        user.advice_unlock_once = True
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Блокіровку скинуто для {user.email}'}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error resetting advice lock: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -1876,6 +2034,96 @@ def mood_predictor():
 
     except Exception as e:
         logging.error(f"Mood predictor error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/premium/sleep-trends', methods=['GET'])
+@login_required
+def sleep_trends():
+    """Тренд сну за останній місяць (Premium feature)."""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user or not user.is_premium:
+            return jsonify({
+                'status': 'error',
+                'message': 'Ця функція доступна тільки для Premium користувачів',
+                'premium_required': True
+            }), 403
+
+        # Отримуємо дані за останній місяць
+        thirty_days_ago = datetime.utcnow().date() - timedelta(days=30)
+        sleep_entries = MoodEntry.query.filter(
+            MoodEntry.user_id == user.id,
+            MoodEntry.date >= thirty_days_ago,
+            MoodEntry.sleep_hours != None
+        ).order_by(MoodEntry.date.asc()).all()
+
+        if not sleep_entries:
+            return jsonify({
+                'status': 'info',
+                'dates': [],
+                'hours': [],
+                'quality': [],
+                'message': 'Недостатньо даних про сон',
+                'insights': ['Почни записувати сон, щоб отримати аналіз тренду']
+            }), 200
+
+        # Переводимо в графік
+        dates = [e.date.strftime('%Y-%m-%d') for e in sleep_entries]
+        hours = [e.sleep_hours for e in sleep_entries]
+        quality = [e.sleep_quality if e.sleep_quality else 0 for e in sleep_entries]
+
+        # Розраховуємо статистику
+        avg_hours = sum(hours) / len(hours)
+        avg_quality = sum([q for q in quality if q]) / len([q for q in quality if q]) if any(quality) else 0
+        
+        # Тренд (перші 2 тижні vs останні 2 тижні)
+        mid = len(hours) // 2
+        first_half_avg = sum(hours[:mid]) / len(hours[:mid]) if mid > 0 else 0
+        second_half_avg = sum(hours[mid:]) / len(hours[mid:]) if len(hours) > mid else 0
+        
+        trend = "up" if second_half_avg > first_half_avg else "down" if second_half_avg < first_half_avg else "stable"
+        trend_percent = abs((second_half_avg - first_half_avg) / first_half_avg * 100) if first_half_avg > 0 else 0
+
+        # Генеруємо інсайти
+        insights = []
+        
+        if trend == "up":
+            insights.append(f"📈 Ти спиш краще! Твій сон покращився на {trend_percent:.0f}%")
+        elif trend == "down":
+            insights.append(f"📉 Твій сон трішки зменшився на {trend_percent:.0f}%. Спробуй спати більше!")
+        else:
+            insights.append(f"➡️ Твій сон стабільний. Середньо: {avg_hours:.1f} годин")
+
+        # Найкращий день
+        best_day_idx = hours.index(max(hours))
+        worst_day_idx = hours.index(min(hours))
+        insights.append(f"🌙 Найбільше спав: {hours[best_day_idx]:.1f} год ({dates[best_day_idx]})")
+        insights.append(f"😴 Найменше спав: {hours[worst_day_idx]:.1f} год ({dates[worst_day_idx]})")
+
+        # Якість сну
+        if avg_quality > 0:
+            if avg_quality >= 3.5:
+                insights.append(f"⭐ Якість твого сну чудова: {avg_quality:.1f}/4")
+            elif avg_quality >= 2.5:
+                insights.append(f"✨ Якість сну у нормі: {avg_quality:.1f}/4")
+            else:
+                insights.append(f"💤 Спробуй поліпшити якість сну: {avg_quality:.1f}/4")
+
+        return jsonify({
+            'status': 'success',
+            'dates': dates,
+            'hours': hours,
+            'quality': quality,
+            'average_hours': round(avg_hours, 1),
+            'average_quality': round(avg_quality, 1),
+            'trend': trend,
+            'trend_percent': round(trend_percent, 1),
+            'insights': insights
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Sleep trends error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 

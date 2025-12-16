@@ -101,6 +101,7 @@
 
       const toggleBtn = `<button class="btn-link" data-action="toggle" data-id="${user.id}" data-admin="${isAdmin ? '1' : '0'}" ${disableToggle ? 'disabled' : ''}>${escapeHtml(toggleLabel)}</button>`;
       const premiumBtn = `<button class="btn-link" data-action="premium" data-id="${user.id}" data-premium="${premiumActive ? '1' : '0'}">${escapeHtml(premiumToggleLabel)}</button>`;
+      const resetAdviceBtn = `<button class="btn-link" data-action="reset-advice" data-id="${user.id}" title="Дозволити користувачу отримати ще одну пораду сьогодні">Скинути блокіровку</button>`;
       const deleteBtn = `<button class="btn-link delete-entry" data-action="delete" data-id="${user.id}" ${disableDelete ? 'disabled' : ''}>${escapeHtml(deleteLabel)}</button>`;
 
       return `<tr>
@@ -115,6 +116,7 @@
         <td style="padding:8px; text-align:right; display:flex; justify-content:flex-end; gap:12px;">
           ${toggleBtn}
           ${premiumBtn}
+          ${resetAdviceBtn}
           ${deleteBtn}
         </td>
       </tr>`;
@@ -174,6 +176,27 @@
     }
   }
 
+  async function resetAdviceLock(userId){
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/reset-advice-lock`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if(!response.ok){
+        const err = await response.json().catch(() => ({}));
+        alert(err.message || t('save_failed'));
+        return;
+      }
+      const data = await response.json();
+      alert(data.message || 'Блокіровку скинуто');
+      await loadUsers();
+    } catch(err){
+      console.error('Failed to reset advice lock', err);
+      alert(t('save_failed'));
+    }
+  }
+
   async function deleteUser(userId){
     if(!confirm(t('admin_confirm_delete_user'))){
       return;
@@ -209,6 +232,9 @@
     if(action === 'premium'){
       const hasPremium = btn.getAttribute('data-premium') === '1';
       togglePremium(userId, !hasPremium);
+    }
+    if(action === 'reset-advice'){
+      resetAdviceLock(userId);
     }
     if(action === 'delete'){
       deleteUser(userId);

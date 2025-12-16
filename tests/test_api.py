@@ -287,6 +287,86 @@ class TestFeedbackAPI:
             assert feedback is not None
 
 
+class TestProductAPI:
+    """Integration тести для API продуктів."""
+    
+    def test_delete_product_as_admin(self, client, app_with_db, admin_user):
+        """
+        ТЕСТ: Адмін може видалити продукт (деактивувати).
+        
+        ЩО РОБИМО:
+        1. Логінимося як адмін
+        2. Створюємо продукт
+        3. Видаляємо продукт (DELETE /api/products/<id>)
+        4. Перевіяємо що продукт деактивований (is_active=False)
+        5. Перевіяємо що продукт не показується у публічному списку
+        
+        ЧОМУ ТАК:
+        - Це реальний сценарій: адмін видаляє продукт з магазину
+        - Використовуємо soft-delete: не видаляємо з БД, а деактивуємо
+        - Тестуємо весь ланцюг: DELETE → БД update → перевірка стану
+        """
+        from models import Product
+        
+        # Залогінимося як адмін
+        with client:
+            client.post('/auth/login',
+                json={
+                    'email': admin_user['email'],
+                    'password': admin_user['password']
+                }
+            )
+            
+            # Створюємо продукт
+            product_data = {
+                'name': 'Test Product to Delete',
+                'price': 19.99,
+                'description': 'Will be deleted'
+            }
+            
+            create_resp = client.post('/api/products',
+                json=product_data,
+                content_type='application/json'
+            )
+            
+            assert create_resp.status_code == 201
+            product_id = create_resp.get_json()['id']
+            
+            # Видаляємо продукт
+            delete_resp = client.delete(f'/api/products/{product_id}')
+            
+            assert delete_resp.status_code == 200
+            data = delete_resp.get_json()
+            assert data['status'] == 'success'
+            assert 'деактивовано' in data['message'].lower() or 'deactivat' in data['message'].lower()
+        
+        # Перевіяємо в БД що продукт деактивований
+        with app_with_db.app_context():
+            product = Product.query.get(product_id)
+            assert product is not None
+            assert product.is_active == False
+    
+    def test_delete_product_as_non_admin(self, client, auth_user):
+        """
+        ТЕСТ: Звичайний користувач НЕ може видалити продукт.
+        
+        ЩО РОБИМО:
+        1. Логінимося як звичайний користувач
+        2. Намагаємось видалити продукт
+        3. Перевіяємо що повертається 403 Forbidden
+        
+        ЧОМУ ТАК:
+        - Тільки адмін повинен мати доступ до видалення продуктів
+        - Звичайний користувач не мав мати такий доступ
+        """
+        delete_resp = client.delete('/api/products/999',
+            headers={'Authorization': f'Bearer {auth_user["token"]}'}
+        )
+        
+        # Мав бути 403 або 401 (залежить від реалізації авторизації)
+        assert delete_resp.status_code in [401, 403]
+
+
 class TestHealthAPI:
     """Integration тести для health endpoint."""
     

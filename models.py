@@ -18,6 +18,7 @@ class User(db.Model):
     premium_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     avatar = db.Column(db.String(255), nullable=True)
+    advice_unlock_once = db.Column(db.Boolean, default=False, nullable=False)  # Allow one extra roll today
     
     # Зв'язок з замовленнями (один користувач - багато замовлень)
     orders = db.relationship('Order', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -137,7 +138,7 @@ class OrderItem(db.Model):
 class MoodEntry(db.Model):
     """Модель для зберігання записів настрою."""
     
-    VALID_MOODS = ['happy', 'neutral', 'sad']
+    VALID_MOODS = ['happy', 'excited', 'neutral', 'calm', 'angry', 'sad', 'disappointed']
     
     __tablename__ = 'mood_entries'
     id = db.Column(db.Integer, primary_key=True)
@@ -147,12 +148,14 @@ class MoodEntry(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=True)
     activities = db.Column(db.String(500), nullable=True)  # Зберігаємо як comma-separated string
+    sleep_quality = db.Column(db.Integer, nullable=True)  # 1-4
+    sleep_hours = db.Column(db.Float, nullable=True)  # Кількість годин (0-12)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
     # Зв'язок з користувачем
     user = db.relationship('User', backref=db.backref('mood_entries', lazy='dynamic', cascade='all, delete-orphan'))
 
-    def __init__(self, mood, date, title, user_id, content=None, activities=None):
+    def __init__(self, mood, date, title, user_id, content=None, activities=None, sleep_quality=None, sleep_hours=None):
         if mood not in self.VALID_MOODS:
             raise ValueError(f'Недійсне значення настрою. Допустимі значення: {", ".join(self.VALID_MOODS)}')
         self.mood = mood
@@ -161,6 +164,8 @@ class MoodEntry(db.Model):
         self.user_id = user_id
         self.content = content
         self.activities = activities
+        self.sleep_quality = sleep_quality
+        self.sleep_hours = sleep_hours
 
     def to_dict(self):
         """Конвертує запис в словник для JSON відповіді."""
@@ -172,6 +177,8 @@ class MoodEntry(db.Model):
             'title': self.title,
             'content': self.content,
             'activities': self.activities.split(',') if self.activities else [],
+            'sleep_quality': self.sleep_quality,
+            'sleep_hours': self.sleep_hours,
             'created_at': self.created_at.isoformat(),
             'mood_emoji': self.get_mood_emoji()
         }
@@ -180,8 +187,12 @@ class MoodEntry(db.Model):
         """Повертає емодзі для відповідного настрою."""
         emoji_map = {
             'happy': '😊',
+            'excited': '🤩',
             'neutral': '😐',
-            'sad': '😢'
+            'calm': '😌',
+            'angry': '😠',
+            'sad': '😢',
+            'disappointed': '😔'
         }
         return emoji_map.get(self.mood, '❓')
 

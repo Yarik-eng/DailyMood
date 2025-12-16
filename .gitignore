@@ -42,3 +42,28 @@ Thumbs.db
 # Backups
 *.bak
 *.old
+# Production deployment (не потрібно для лаби)
+PRODUCTION_*.md
+docker-compose.production.yml
+docker-compose.monitoring.yml
+deploy_production.*
+gunicorn.conf.py
+nginx.conf
+.env.production
+monitoring/
+ssl/
+
+# Утилітні скрипти
+backup_database.py
+cleanup_database.py
+api_blueprints.py
+
+# Старі звіти інших студентів
+lab-reports/lab03-report-*.md
+lab-reports/lab04-report-*.md
+
+# Тимчасові файли
+.coverage
+.pytest_cache/
+data/app.db
+PRESENTATION_GUIDE.md

@@ -3,18 +3,49 @@
 {% block title %}DailyMood — Home{% endblock %}
 
 {% block content %}
-<div class="quote-wrap">
-  <div class="card">
+<style>
+.sparkle-particle {
+  position: fixed;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--particle-color-1) 0%, var(--particle-color-2) 30%, var(--particle-color-3) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+  animation: sparkle-burst 3s ease-out forwards;
+  filter: blur(20px);
+  opacity: 1;
+}
+
+@keyframes sparkle-burst {
+  0% {
+    transform: translate(0, 0) scale(0.2);
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(2);
+    opacity: 0;
+  }
+}
+</style>
+<div class="quote-wrap" data-advice-unlock-once="{% if advice_unlock_once %}true{% else %}false{% endif %}">
+  <div class="card" id="adviceCard">
     <div class="quote-inner">
         <p id="quoteText">&nbsp;</p>
       </div>
   </div>
   <div class="controls">
-    <button id="newQuote" class="btn secondary" data-i18n="new_quote">Нова цитата</button>
+    <button id="newQuote" class="btn secondary" data-i18n="new_advice">Нова порада</button>
     <button id="copyQuote" class="btn secondary" data-i18n="copy_quote">Копіювати</button>
     <button id="saveQuote" class="btn secondary" data-i18n="save_quote">Зберегти</button>
   </div>
-  <p class="muted"><small data-i18n="tip_new_quote">Підказка: Натисніть N для нової цитати</small></p>
+  <p class="muted"><small data-i18n="tip_new_advice">Підказка: натисни N, щоб отримати пораду</small></p>
 </div>
 
 <section class="card theme-panel" id="activityRecsSection" style="display:none; margin-top:20px;">
@@ -45,11 +76,29 @@
   (function () {
     // Get quotes based on current language
     const QUOTES = currentLanguage === 'uk' ? translations_quotes_uk : translations_quotes_en;
+    let ADVICE_UNLOCK_ONCE = document.querySelector('.quote-wrap').getAttribute('data-advice-unlock-once') === 'true';
 
     const quoteText = document.getElementById('quoteText');
     const newBtn = document.getElementById('newQuote');
     const copyBtn = document.getElementById('copyQuote');
     const saveBtn = document.getElementById('saveQuote');
+    const ROLL_KEY = 'dailyMoodQuoteRollDate';
+    const QUOTE_OF_DAY_KEY = 'dailyMoodQuoteOfDay';
+
+    function todayStr(){ return new Date().toISOString().slice(0,10); }
+    function setRollDisabled(disabled){
+      if (!newBtn) return;
+      newBtn.disabled = disabled;
+      newBtn.classList.toggle('disabled', disabled);
+      const texts = currentLanguage === 'uk' ? translations_uk : translations_en;
+      if (disabled) {
+        newBtn.textContent = (texts.daily_advice_locked || 'Порада дня активована');
+        newBtn.setAttribute('data-i18n', 'daily_advice_locked');
+      } else {
+        newBtn.textContent = (texts.new_advice || 'Нова порада');
+        newBtn.setAttribute('data-i18n', 'new_advice');
+      }
+    }
 
     let currentIndex = -1;
     let animating = false;
@@ -135,13 +184,99 @@
     }
 
     function onKey(e) {
-      if (e.key === 'n' || e.key === 'N') showRandomQuote();
+      if (e.key === 'n' || e.key === 'N') {
+        const last = localStorage.getItem(ROLL_KEY);
+        if (last === todayStr() && !ADVICE_UNLOCK_ONCE) return; // locked for today unless admin unlock
+        newBtn.click();
+      }
+    }
+
+    function createSparkleBurst() {
+      const card = document.getElementById('adviceCard');
+      if (!card) return;
+      
+      const rect = card.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const particleCount = 60; // Більше частинок для густішого диму
+      
+      // Палітра кольорів для переливання
+      const colorPalette = [
+        ['rgba(139,92,246,0.8)', 'rgba(139,92,246,0.6)', 'rgba(139,92,246,0.4)'], // фіолетовий
+        ['rgba(59,130,246,0.8)', 'rgba(59,130,246,0.6)', 'rgba(59,130,246,0.4)'], // синій
+        ['rgba(147,51,234,0.8)', 'rgba(147,51,234,0.6)', 'rgba(147,51,234,0.4)'], // темно-фіолетовий
+        ['rgba(168,85,247,0.8)', 'rgba(168,85,247,0.6)', 'rgba(168,85,247,0.4)'], // світло-фіолетовий
+        ['rgba(79,70,229,0.8)', 'rgba(79,70,229,0.6)', 'rgba(79,70,229,0.4)'], // індиго
+        ['rgba(219,39,119,0.8)', 'rgba(219,39,119,0.6)', 'rgba(219,39,119,0.4)']  // рожевий
+      ];
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'sparkle-particle';
+        
+        const angle = (Math.PI * 2 * i) / particleCount;
+        const distance = 150 + Math.random() * 150; // Більша область
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        // Випадковий колір з палітри
+        const colors = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+        
+        particle.style.left = centerX + 'px';
+        particle.style.top = centerY + 'px';
+        particle.style.setProperty('--tx', tx + 'px');
+        particle.style.setProperty('--ty', ty + 'px');
+        particle.style.setProperty('--particle-color-1', colors[0]);
+        particle.style.setProperty('--particle-color-2', colors[1]);
+        particle.style.setProperty('--particle-color-3', colors[2]);
+        
+        // Випадкова затримка для ефекту переливання
+        particle.style.animationDelay = (Math.random() * 0.2) + 's';
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => particle.remove(), 3300);
+      }
     }
 
     // Event listeners
     newBtn.addEventListener('click', () => {
-      showRandomQuote();
-      setTimeout(updateSaveButton, 350);
+      const last = localStorage.getItem(ROLL_KEY);
+      const today = todayStr();
+      
+      // Allow one extra roll if admin unlocked it
+      if (last === today && !ADVICE_UNLOCK_ONCE) { 
+        setRollDisabled(true); 
+        return; 
+      }
+      
+      // Create sparkle burst effect
+      createSparkleBurst();
+      
+      // Get the selected quote BEFORE animation
+      const quotes = currentLanguage === 'uk' ? translations_quotes_uk : translations_quotes_en;
+      const idx = randomIndexExcluding(quotes.length, currentIndex);
+      currentIndex = idx;
+      const selectedQuote = quotes[idx];
+      
+      // Show animation
+      setQuoteAnimated(selectedQuote);
+      
+      // Save to localStorage after animation completes
+      setTimeout(() => {
+        try {
+          localStorage.setItem(ROLL_KEY, today);
+          localStorage.setItem(QUOTE_OF_DAY_KEY, selectedQuote);
+          console.log('Saved:', {date: today, quote: selectedQuote}); // Debug
+        } catch(e) { console.error('localStorage error:', e); }
+        setRollDisabled(true);
+        // Одноразове розблокування використане — вимикаємо, щоб більше не обходити ліміт
+        if (ADVICE_UNLOCK_ONCE) {
+          ADVICE_UNLOCK_ONCE = false;
+        }
+        updateSaveButton();
+      }, 600);
     });
 
     copyBtn.addEventListener('click', copyQuote);
@@ -192,19 +327,41 @@
     window.addEventListener('languageChanged', () => {
       // Update button texts
       const texts = currentLanguage === 'uk' ? translations_uk : translations_en;
-      if (newBtn) newBtn.textContent = texts.new_quote || 'New Quote';
-      if (copyBtn) copyBtn.textContent = texts.copy_quote || 'Copy';
+      if (newBtn) setRollDisabled(newBtn.disabled);
+      if (copyBtn) copyBtn.textContent = texts.copy_quote || 'Копіювати';
       if (saveBtn) updateSaveButton();
 
-      // Show new quote without animation
+      // Show new quote without animation, respecting daily lock
       firstRender = true;
-      showRandomQuote();
+      const last = localStorage.getItem(ROLL_KEY);
+      const today = todayStr();
+      const stored = localStorage.getItem(QUOTE_OF_DAY_KEY);
+      if (last === today && stored) {
+        setQuoteAnimated(stored);
+        setRollDisabled(!ADVICE_UNLOCK_ONCE);
+      } else {
+        showRandomQuote();
+        setRollDisabled(false);
+      }
       setTimeout(updateSaveButton, 60);
     });
 
-    // Initialize
-    showRandomQuote();
-    setTimeout(updateSaveButton, 300);
+    // Initialize (respect daily lock and restore today's quote)
+    (function initDailyQuote(){
+      const last = localStorage.getItem(ROLL_KEY);
+      const today = todayStr();
+      const stored = localStorage.getItem(QUOTE_OF_DAY_KEY);
+      console.log('Init check:', {last, today, stored}); // Debug log
+      if (last === today && stored) {
+        firstRender = true;
+        setQuoteAnimated(stored);
+        setRollDisabled(!ADVICE_UNLOCK_ONCE);
+      } else {
+        showRandomQuote();
+        setRollDisabled(false);
+      }
+      setTimeout(updateSaveButton, 300);
+    })();
 
     // -------------------- Activity Recommendations (Premium) --------------------
     (async function initActivityRecs() {

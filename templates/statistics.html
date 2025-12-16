@@ -31,7 +31,7 @@
 
     <section class="mood-charts">
         <div class="chart-container">
-            <h2 data-i18n="mood_trend">Тренд настрою за останній місяць</h2>
+            <h2 data-i18n="mood_trend" style="font-size:1.5em; font-weight:900; color:#ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); margin-bottom:16px;">Тренд настрою за останній місяць</h2>
             <canvas id="moodTrendChart"></canvas>
         </div>
         
@@ -53,8 +53,57 @@
         </div>
     </section>
 
+    <section class="card theme-panel sleep-stats">
+        <h2 data-i18n="sleep_statistics">Статистика сну 💤</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 data-i18n="sleep_nights">Ночей зі сном</h3>
+                <p class="stat-number">{{ sleep_stats.total_nights or 0 }}</p>
+            </div>
+            <div class="stat-card">
+                <h3 data-i18n="sleep_average">Середня кількість годин</h3>
+                <p class="stat-number">{{ "%.1f"|format(sleep_stats.average_hours) or '-' }}</p>
+            </div>
+            <div class="stat-card">
+                <h3 data-i18n="sleep_best">Найбільше годин</h3>
+                <p class="stat-number">{{ "%.1f"|format(sleep_stats.best_night) if sleep_stats.best_night else '-' }}</p>
+            </div>
+            <div class="stat-card">
+                <h3 data-i18n="sleep_worst">Найменше годин</h3>
+                <p class="stat-number">{{ "%.1f"|format(sleep_stats.worst_night) if sleep_stats.worst_night else '-' }}</p>
+            </div>
+            <div class="stat-card">
+                <h3 data-i18n="sleep_quality_avg">Середня якість</h3>
+                <p class="stat-number">{{ sleep_stats.average_quality or '-' }}/4</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Premium Sleep Trend Section -->
+    <section class="card theme-panel" id="sleepTrendSection" style="display:none;">
+        <p class="muted" style="margin-bottom:12px;" data-i18n="sleep_trend_desc">Тренд твого сну за останній місяць</p>
+        
+        <div id="sleepTrendContent" style="display:none;">
+            <div class="chart-container" style="margin-bottom:24px;">
+                <h3 data-i18n="sleep_trend" style="font-size:1.3em; font-weight:900; color:#ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); margin-bottom:16px;">Тренд сну за останній місяць</h3>
+                <canvas id="sleepTrendChart" style="max-height:300px;"></canvas>
+            </div>
+            
+            <div id="sleepInsights" style="background:rgba(147,197,253,0.1); border-left:3px solid #60a5fa; padding:12px; border-radius:8px; margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0; font-size:0.9em; opacity:0.9;" data-i18n="sleep_insights">💡 Інсайти сну</h4>
+                <ul id="sleepInsightsList" style="margin:0; padding-left:20px; font-size:0.95em; line-height:1.6;"></ul>
+            </div>
+        </div>
+        
+        <div id="sleepTrendLocked" style="text-align:center; padding:20px;">
+            <p style="font-size:1.1em; margin-bottom:12px;" data-i18n="premium_required">🔒 Ця функція доступна тільки для Premium користувачів</p>
+            <a href="/store" class="btn" data-i18n="get_premium">Отримати Premium</a>
+        </div>
+        
+        <div id="sleepTrendError" style="display:none; color:#ef4444; text-align:center; padding:12px;"></div>
+    </section>
+
     <section class="card theme-panel" id="moodPredictorSection" style="display:none;">
-        <h2 data-i18n="mood_predictor_title">🔮 Mood Predictor <span style="font-size:0.7em; color:#60a5fa; font-weight:600;" data-i18n="premium_badge">PREMIUM</span></h2>
         <p class="muted" style="margin-bottom:12px;" data-i18n="mood_predictor_desc">Передбачення настрою на завтра на основі твоєї історії</p>
         
         <div id="predictorContent" style="display:none;">
@@ -110,15 +159,38 @@
 {% endblock %}
 
 {% block extra_scripts %}
+    <!-- Pass mood data from Flask to JavaScript -->
+    <script id="moodDataScript" type="text/plain">
+    {% if mood_data %}{{ mood_data | tojson }}{% else %}{}{% endif %}
+    </script>
+    
     <script>
     // Defensive: initialize moodData and assign backend data when available
     let moodData = { dates: [], values: [], moods: [], counts: [] };
-    {% if mood_data %}
-    moodData = {{ mood_data | tojson }};
-    {% endif %}
+    try {
+        const scriptEl = document.getElementById('moodDataScript');
+        if (scriptEl && scriptEl.textContent) {
+            const parsed = JSON.parse(scriptEl.textContent);
+            if (parsed && typeof parsed === 'object') {
+                moodData = parsed;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to parse mood data from script tag:', e);
+    }
 
     // i18n helper for this page
-    function t_stat(key){ try { return (typeof currentLanguage!=='undefined' && currentLanguage==='uk') ? (translations_uk[key]||'') : (translations_en[key]||''); } catch(e){ return ''; } }
+    function t_stat(key) {
+        try {
+            if (typeof currentLanguage === 'undefined') return '';
+            const translations = currentLanguage === 'uk' ? translations_uk : translations_en;
+            if (typeof translations === 'undefined') return '';
+            return translations[key] || '';
+        } catch(e) {
+            console.warn('Translation error for key:', key);
+            return '';
+        }
+    }
 
     // Helper to safely create charts only when data arrays exist
     function createTrendChart(data) {
@@ -136,12 +208,55 @@
                     label: t_stat('mood_chart_label') || 'Настрій',
                     data: values,
                     borderColor: '#4CAF50',
-                    tension: 0.1
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.1,
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#4CAF50',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    fill: true
                 }]
             },
             options: {
                 responsive: true,
-                scales: { y: { beginAtZero: true } }
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff',
+                            font: { size: 14, weight: 600 },
+                            padding: 20,
+                            boxWidth: 15,
+                            usePointStyle: true
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            font: { size: 12, weight: 600 },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            lineWidth: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            font: { size: 12, weight: 600 },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            lineWidth: 1
+                        }
+                    }
+                }
             }
         });
     }
@@ -158,6 +273,23 @@
             data: {
                 labels: labels,
                 datasets: [{ data: counts, backgroundColor: ['#4CAF50','#2196F3','#FFC107','#F44336','#9C27B0'] }]
+                
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                size: 12,
+                                weight: 400
+                            },
+                            padding: 15,
+                            boxWidth: 12
+                        }
+                    }
+                }
             }
         });
     }
@@ -169,28 +301,36 @@
     // Translation-aware helpers for month and weekday names
     function getTranslatedMonthName_stat(month, year) {
         try {
-            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.month_names)) {
-                return translations_uk.month_names[month] + ' ' + year;
-            }
-            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.month_names)) {
-                return translations_en.month_names[month] + ' ' + year;
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') {
+                if (typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.month_names) && translations_uk.month_names[month]) {
+                    return translations_uk.month_names[month] + ' ' + year;
+                }
+            } else {
+                if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.month_names) && translations_en.month_names[month]) {
+                    return translations_en.month_names[month] + ' ' + year;
+                }
             }
         } catch (e) { /* ignore */ }
         const d = new Date(year, month, 1);
-        return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const locale = currentLanguage === 'uk' ? 'uk-UA' : 'en-US';
+        return d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
     }
 
     function getTranslatedWeekdayShort_stat(index) {
         try {
-            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk' && typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.weekday_short)) {
-                return translations_uk.weekday_short[index];
-            }
-            if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.weekday_short)) {
-                return translations_en.weekday_short[index];
+            if (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') {
+                if (typeof translations_uk !== 'undefined' && Array.isArray(translations_uk.weekday_short) && translations_uk.weekday_short[index]) {
+                    return translations_uk.weekday_short[index];
+                }
+            } else {
+                if (typeof translations_en !== 'undefined' && Array.isArray(translations_en.weekday_short) && translations_en.weekday_short[index]) {
+                    return translations_en.weekday_short[index];
+                }
             }
         } catch (e) { /* ignore */ }
         const tmp = new Date(2020,5,index+1);
-        return tmp.toLocaleDateString(undefined, { weekday: 'short' });
+        const locale = currentLanguage === 'uk' ? 'uk-UA' : 'en-US';
+        return tmp.toLocaleDateString(locale, { weekday: 'short' });
     }
 
     function renderMoodMonthLabel() {
@@ -250,9 +390,13 @@
             const moodForDay = dateMood[dateStr];
             if (moodForDay) {
                 dayCell.classList.add('mood-' + moodForDay);
-                indicator.setAttribute('title', moodForDay === 'happy' ? (t_stat('mood_happy')||'Щасливий') : (moodForDay === 'neutral' ? (t_stat('mood_neutral')||'Нейтральний') : (t_stat('mood_sad')||'Сумний')));
+                let moodLabel = '';
+                if (moodForDay === 'happy') moodLabel = currentLanguage === 'uk' ? 'Щасливий' : 'Happy';
+                else if (moodForDay === 'neutral') moodLabel = currentLanguage === 'uk' ? 'Нейтральний' : 'Neutral';
+                else if (moodForDay === 'sad') moodLabel = currentLanguage === 'uk' ? 'Сумний' : 'Sad';
+                indicator.setAttribute('title', moodLabel);
             } else {
-                indicator.setAttribute('title', t_stat('no_data') || 'Немає даних');
+                indicator.setAttribute('title', currentLanguage === 'uk' ? 'Немає даних' : 'No data');
             }
 
             dayCell.appendChild(dateNum);
@@ -262,22 +406,38 @@
     }
 
     // Initialize charts and calendar (safe even if moodData is empty)
-    createTrendChart(moodData);
-    createDistributionChart(moodData);
+    try {
+        createTrendChart(moodData);
+    } catch (e) {
+        console.warn('Failed to create trend chart:', e);
+    }
+    try {
+        createDistributionChart(moodData);
+    } catch (e) {
+        console.warn('Failed to create distribution chart:', e);
+    }
     // wire month buttons
     document.addEventListener('DOMContentLoaded', () => {
-        const prev = document.getElementById('moodPrevMonth');
-        const next = document.getElementById('moodNextMonth');
-        if (prev) prev.addEventListener('click', () => changeMoodMonth(-1));
-        if (next) next.addEventListener('click', () => changeMoodMonth(1));
-        renderMoodMonthLabel();
-        renderMoodCalendar(moodData, moodYear, moodMonth);
+        try {
+            const prev = document.getElementById('moodPrevMonth');
+            const next = document.getElementById('moodNextMonth');
+            if (prev) prev.addEventListener('click', () => changeMoodMonth(-1));
+            if (next) next.addEventListener('click', () => changeMoodMonth(1));
+            renderMoodMonthLabel();
+            renderMoodCalendar(moodData, moodYear, moodMonth);
+        } catch (e) {
+            console.warn('Failed to initialize calendar controls:', e);
+        }
     });
 
     // Re-render month label and calendar when language changes
-    window.addEventListener('languageChanged', () => {
+    window.addEventListener('languageChanged', (e) => {
         try { renderMoodMonthLabel(); } catch (e) {}
         try { renderMoodCalendar(moodData, moodYear, moodMonth); } catch (e) {}
+        setTimeout(() => {
+            const newLang = e.detail?.language || currentLanguage;
+            window.location.href = `/statistics?lang=${newLang}&v=${new Date().getTime()}`;
+        }, 300);
     });
 
     // Fallback: if backend didn't provide a daily quote, use client-side translations/quotes
@@ -319,12 +479,15 @@
         } catch (e) { /* ignore localStorage access errors */ }
 
         // Use localized quotes array (from static/translations/quotes.js) if available
-        const quotesArr = (typeof currentLanguage !== 'undefined' && currentLanguage === 'uk') ? (window.translations_quotes_uk || []) : (window.translations_quotes_en || []);
-        if (quotesArr && quotesArr.length) {
-            dqEl.textContent = quotesArr[Math.floor(Math.random() * quotesArr.length)];
+        const lang = (typeof currentLanguage !== 'undefined') ? currentLanguage : 'uk';
+        const quotesArr = (lang === 'uk') ? (window.translations_quotes_uk || []) : (window.translations_quotes_en || []);
+        if (Array.isArray(quotesArr) && quotesArr.length > 0) {
+            const randomQuote = quotesArr[Math.floor(Math.random() * quotesArr.length)];
+            dqEl.textContent = randomQuote || '—';
             if (daEl) daEl.textContent = '';
         } else {
-            dqEl.textContent = (typeof translations_en !== 'undefined' && translations_en.quote_of_day) ? translations_en.quote_of_day : '—';
+            const fallback = (typeof translations_en !== 'undefined' && translations_en && translations_en.quote_of_day) ? translations_en.quote_of_day : '—';
+            dqEl.textContent = fallback;
             if (daEl) daEl.textContent = '';
         }
     })();
@@ -340,14 +503,22 @@
     function updateQuoteCounts() {
         try {
             const raw = JSON.parse(localStorage.getItem('dailyMoodFavorites') || '[]');
-            const items = Array.isArray(raw) ? raw.map(it => (typeof it === 'string' ? { text: it, favorite: false } : (it && typeof it === 'object' ? { text: String(it.text || ''), favorite: !!it.favorite } : null))).filter(Boolean) : [];
+            const items = Array.isArray(raw) ? raw.map(it => {
+                if (typeof it === 'string') return { text: it, favorite: false };
+                if (it && typeof it === 'object') return { text: String(it.text || ''), favorite: !!it.favorite };
+                return null;
+            }).filter(Boolean) : [];
             const savedCountEl = document.getElementById('quotesSavedCount');
             const favCountEl = document.getElementById('favoriteQuotesCount');
-            const savedCount = items.length;
-            const favCount = items.filter(i => !!i.favorite).length;
-            if (savedCountEl) savedCountEl.textContent = savedCount;
-            if (favCountEl) favCountEl.textContent = favCount;
-        } catch(e) { /* ignore */ }
+            if (savedCountEl && favCountEl) {
+                const savedCount = items.length;
+                const favCount = items.filter(i => !!i.favorite).length;
+                savedCountEl.textContent = savedCount;
+                favCountEl.textContent = favCount;
+            }
+        } catch(e) {
+            console.warn('Failed to update quote counts:', e);
+        }
     }
 
     window.addEventListener('favoritesUpdated', updateQuoteCounts);
@@ -397,14 +568,15 @@
                 content.style.display = '';
                 
                 const moodEmojis = { happy: '😊', neutral: '😐', sad: '😢' };
-                const moodNamesUk = { happy: 'Щасливий', neutral: 'Нейтральний', sad: 'Сумний' };
+                const moodNames = currentLanguage === 'uk' ? { happy: 'Щасливий', neutral: 'Нейтральний', sad: 'Сумний' } : { happy: 'Happy', neutral: 'Neutral', sad: 'Sad' };
                 const trendEmojis = { up: '📈', down: '📉', stable: '➡️' };
-                const trendNamesUk = { up: 'Покращується', down: 'Знижується', stable: 'Стабільний' };
+                const trendNames = currentLanguage === 'uk' ? { up: 'Покращується', down: 'Знижується', stable: 'Стабільний' } : { up: 'Improving', down: 'Declining', stable: 'Stable' };
                 
                 document.getElementById('predictionMood').textContent = moodEmojis[data.prediction] || '😐';
-                document.getElementById('predictionDate').textContent = new Date(data.tomorrow_date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+                const dateLocale = currentLanguage === 'uk' ? 'uk-UA' : 'en-US';
+                document.getElementById('predictionDate').textContent = new Date(data.tomorrow_date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long' });
                 document.getElementById('predictionConfidence').textContent = Math.round(data.confidence) + '%';
-                document.getElementById('predictionTrend').textContent = (trendEmojis[data.trend] || '') + ' ' + (trendNamesUk[data.trend] || data.trend);
+                document.getElementById('predictionTrend').textContent = (trendEmojis[data.trend] || '') + ' ' + (trendNames[data.trend] || data.trend);
                 
                 const insightsList = document.getElementById('insightsList');
                 insightsList.innerHTML = '';
@@ -432,5 +604,155 @@
             }
         }
     })();
+
+    // -------------------- Sleep Trend (Premium) --------------------
+    (async function initSleepTrend() {
+        const section = document.getElementById('sleepTrendSection');
+        const content = document.getElementById('sleepTrendContent');
+        const locked = document.getElementById('sleepTrendLocked');
+        const errorEl = document.getElementById('sleepTrendError');
+        
+        if (!section) return;
+        
+        try {
+            // Check if user is logged in and premium
+            const userRes = await fetch('/api/me', { credentials: 'include' });
+            if (!userRes.ok) {
+                // Not authorized or failed to fetch user — show locked CTA
+                section.style.display = 'block';
+                content.style.display = 'none';
+                locked.style.display = 'block';
+                return;
+            }
+
+            const userResponse = await userRes.json();
+            const user = userResponse.user || userResponse;
+            
+            if (!user || !user.is_premium) {
+                // Non-premium: show locked CTA instead of hiding the section
+                section.style.display = 'block';
+                content.style.display = 'none';
+                locked.style.display = 'block';
+                return;
+            }
+
+            // Premium user - fetch sleep trends
+            const trendRes = await fetch('/api/premium/sleep-trends', { credentials: 'include' });
+            const trendData = await trendRes.json();
+
+            if (trendData.status === 'success') {
+                section.style.display = 'block';
+                content.style.display = 'block';
+                locked.style.display = 'none';
+
+                // Create trend chart
+                createSleepTrendChart(trendData);
+
+                // Display insights
+                const insightsList = document.getElementById('sleepInsightsList');
+                insightsList.innerHTML = '';
+                if (Array.isArray(trendData.insights)) {
+                    trendData.insights.forEach(insight => {
+                        const li = document.createElement('li');
+                        li.textContent = insight;
+                        insightsList.appendChild(li);
+                    });
+                }
+            } else if (trendData.status === 'info') {
+                section.style.display = 'block';
+                content.style.display = 'block';
+                locked.style.display = 'none';
+                
+                const insightsList = document.getElementById('sleepInsightsList');
+                insightsList.innerHTML = '';
+                if (Array.isArray(trendData.insights)) {
+                    trendData.insights.forEach(insight => {
+                        const li = document.createElement('li');
+                        li.textContent = insight;
+                        insightsList.appendChild(li);
+                    });
+                }
+            } else {
+                throw new Error(trendData.message || 'Unknown error');
+            }
+            
+        } catch (err) {
+            if (errorEl) {
+                errorEl.textContent = 'Не вдалося завантажити тренд сну. Спробуйте пізніше.';
+                errorEl.style.display = 'block';
+            }
+        }
+    })();
+
+    function createSleepTrendChart(data) {
+        const chartEl = document.getElementById('sleepTrendChart');
+        if (!chartEl) return;
+        const ctx = chartEl.getContext && chartEl.getContext('2d');
+        if (!ctx) return;
+
+        const labels = Array.isArray(data.dates) ? data.dates : [];
+        const values = Array.isArray(data.hours) ? data.hours : [];
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Години сну',
+                    data: values,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff',
+                            font: { size: 14, weight: 600 },
+                            padding: 20,
+                            boxWidth: 15,
+                            usePointStyle: true
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 12,
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            font: { size: 12, weight: 600 },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            lineWidth: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            font: { size: 12, weight: 600 },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            lineWidth: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}

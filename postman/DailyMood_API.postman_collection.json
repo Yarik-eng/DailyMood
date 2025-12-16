@@ -207,49 +207,216 @@
       "request": {
         "method": "POST",
         "header": [ {"key":"Content-Type","value":"application/json"} ],
-        "body": { "mode": "raw", "raw": "{\n  \"mood\": \"happy\",\n  \"date\": \"2025-11-27\",\n  \"title\": \"A great day\",\n  \"content\": \"Felt productive and calm\",\n  \"activities\": \"reading,exercise\"\n}" },
+        "body": { "mode": "raw", "raw": "{\n  \"mood\": \"happy\",\n  \"date\": \"2025-11-27\",\n  \"title\": \"A great day\",\n  \"content\": \"Felt productive and calm\",\n  \"activities\": [\"reading\", \"exercise\"]\n}" },
         "url": { "raw": "{{baseUrl}}/api/journal", "host": ["{{baseUrl}}"], "path": ["api","journal"] }
       },
       "event": [
         {
-          "listen": "prerequest",
+          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "// Auto-login",
-              "const creds = { email: pm.collectionVariables.get('authEmail'), password: pm.collectionVariables.get('authPassword') };",
-              "pm.sendRequest({",
-              "  url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
-              "  method: 'POST',",
-              "  header: { 'Content-Type': 'application/json' },",
-              "  body: { mode: 'raw', raw: JSON.stringify(creds) }",
-              "}, function(err, res) {",
-              "  if (res && res.code !== 200) {",
-              "    pm.sendRequest({",
-              "      url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
-              "      method: 'POST',",
-              "      header: { 'Content-Type': 'application/json' },",
-              "      body: { mode: 'raw', raw: JSON.stringify(creds) }",
-              "    }, function() {",
-              "      pm.sendRequest({",
-              "        url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
-              "        method: 'POST',",
-              "        header: { 'Content-Type': 'application/json' },",
-              "        body: { mode: 'raw', raw: JSON.stringify(creds) }",
-              "      }, function() {});",
-              "    });",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  if (data.data && data.data.id) {",
+              "    pm.collectionVariables.set('entryId', data.data.id);",
+              "    console.log('Saved entryId:', data.data.id);",
               "  }",
-              "});",
-              ""
+              "}"
             ]
           }
         }
       ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "List Journal Entries",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/journal", "host": ["{{baseUrl}}"], "path": ["api","journal"] }
+      }
+    },
+    {
+      "name": "Update Journal Entry",
+      "request": {
+        "method": "PUT",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"mood\": \"neutral\",\n  \"title\": \"Updated title\",\n  \"activities\": [\"meditation\"]\n}" },
+        "url": { "raw": "{{baseUrl}}/api/journal/{{entryId}}", "host": ["{{baseUrl}}"], "path": ["api","journal","{{entryId}}"] }
+      }
+    },
+    {
+      "name": "Delete Journal Entry",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/journal/{{entryId}}", "host": ["{{baseUrl}}"], "path": ["api","journal","{{entryId}}"] }
+      }
+    },
+    {
+      "name": "Export Journal (CSV)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/journal/export?format=csv", "host": ["{{baseUrl}}"], "path": ["api","journal","export"], "query": [ {"key":"format","value":"csv"} ] }
+      }
+    },
+    {
+      "name": "Export Journal (JSON)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/journal/export?format=json", "host": ["{{baseUrl}}"], "path": ["api","journal","export"], "query": [ {"key":"format","value":"json"} ] }
+      }
+    },
+    {
+      "name": "Get Orders (list)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] }
+      }
+    },
+    {
+      "name": "Get Order",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}"] }
+      }
+    },
+    {
+      "name": "Stats Trends",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/stats/trends", "host": ["{{baseUrl}}"], "path": ["api","stats","trends"] }
+      }
+    },
+    {
+      "name": "Get Current User",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api","me"] }
+      }
+    },
+    {
+      "name": "List Avatars",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/avatars", "host": ["{{baseUrl}}"], "path": ["api","avatars"] }
+      }
+    },
+    {
+      "name": "Update My Avatar",
+      "request": {
+        "method": "PUT",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"avatar\": \"cat\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/me/avatar", "host": ["{{baseUrl}}"], "path": ["api","me","avatar"] }
+      }
+    },
+    {
+      "name": "List Habits",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/habits", "host": ["{{baseUrl}}"], "path": ["api","habits"] }
+      }
+    },
+    {
+      "name": "Create Habit",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Drink water\",\n  \"type\": \"daily\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/habits", "host": ["{{baseUrl}}"], "path": ["api","habits"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  if (data.data && data.data.id) {",
+              "    pm.collectionVariables.set('habitId', data.data.id);",
+              "    console.log('Saved habitId:', data.data.id);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Toggle Habit",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/habits/{{habitId}}/toggle", "host": ["{{baseUrl}}"], "path": ["api","habits","{{habitId}}","toggle"] }
+      }
+    },
+    {
+      "name": "Delete Habit",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/habits/{{habitId}}", "host": ["{{baseUrl}}"], "path": ["api","habits","{{habitId}}"] }
+      }
+    },
+    {
+      "name": "List Goals",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/goals", "host": ["{{baseUrl}}"], "path": ["api","goals"] }
+      }
+    },
+    {
+      "name": "Create Goal",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/json"} ],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Finish course\",\n  \"deadline\": \"2025-12-31\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/goals", "host": ["{{baseUrl}}"], "path": ["api","goals"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  if (data.data && data.data.id) {",
+              "    pm.collectionVariables.set('goalId', data.data.id);",
+              "    console.log('Saved goalId:', data.data.id);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Toggle Goal",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/goals/{{goalId}}/toggle", "host": ["{{baseUrl}}"], "path": ["api","goals","{{goalId}}","toggle"] }
+      }
+    },
+    {
+      "name": "Delete Goal",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","goals","{{goalId}}"] }
+      }
     }
   ],
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5000" },
     { "key": "orderId", "value": "1" },
+    { "key": "entryId", "value": "1" },
+    { "key": "habitId", "value": "1" },
+    { "key": "goalId", "value": "1" },
     { "key": "authEmail", "value": "tester@example.com" },
     { "key": "authPassword", "value": "test123" }
   ]

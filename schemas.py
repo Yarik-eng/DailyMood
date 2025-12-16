@@ -161,12 +161,16 @@ class CreateJournalEntrySchema(ma.Schema):
     """Схема для створення запису настрою"""
     mood = fields.Str(
         required=True,
-        validate=validate.OneOf(['happy', 'neutral', 'sad'])
+        validate=validate.OneOf([
+            'happy', 'excited', 'neutral', 'calm', 'angry', 'sad', 'disappointed'
+        ])
     )
     date = fields.Date(required=True)
     title = fields.Str(required=True, validate=validate.Length(min=1, max=200))
     content = fields.Str(validate=validate.Length(max=5000))
     activities = fields.List(fields.Str())
+    sleep_quality = fields.Int(allow_none=True)
+    sleep_hours = fields.Float(allow_none=True)
 
     class Meta:
         ordered = True

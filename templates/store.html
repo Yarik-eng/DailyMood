@@ -3,18 +3,106 @@
 {% block title %}Магазин — DailyMood{% endblock %}
 
 {% block content %}
+<style>
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.store-section {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.store-section:nth-child(1) { animation-delay: 0.1s; }
+.store-section:nth-child(2) { animation-delay: 0.2s; }
+.store-section:nth-child(3) { animation-delay: 0.3s; }
+.store-section:nth-child(4) { animation-delay: 0.4s; }
+
+details {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+details[open] {
+  background: rgba(148,163,184,0.08) !important;
+}
+
+details summary {
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+details summary:hover {
+  opacity: 0.8;
+}
+
+details[open] summary {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(148,163,184,0.15);
+}
+
+details > *:not(summary) {
+  animation: slideDown 0.9s ease-out;
+  transform-origin: top;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 500px;
+  }
+}
+
+.benefit-card {
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.benefit-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+</style>
   <section class="page-banner">
     <h1 data-i18n="store_title">Магазин</h1>
   </section>
 
-  <section class="theme-panel" aria-labelledby="store-title">
+  <!-- Promo Banner -->
+  <section class="store-section" style="margin:20px auto; max-width:1200px; padding:0 16px;">
+    <div style="background:linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(59,130,246,0.15) 100%); border:1px solid rgba(139,92,246,0.3); border-radius:16px; padding:24px 28px; text-align:center;">
+      <div style="font-size:24px; font-weight:900; margin-bottom:8px; background:linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;" data-i18n="promo_title">🎉 Спеціальна пропозиція</div>
+      <p style="margin:0; font-size:15px; opacity:0.9;" data-i18n="promo_desc">Отримай Premium за спеціальною ціною! Розширені функції для кращого трекінгу настрою.</p>
+    </div>
+  </section>
+
+  <section class="theme-panel store-section" aria-labelledby="store-title">
     <h2 id="store-title" style="margin-top:0;" data-i18n="store_premium_title">Преміум та підтримка</h2>
     <p class="muted" style="margin-top:6px;" data-i18n="store_premium_desc">Обери Premium для розширених можливостей або підтримай нас покупкою доповнень.</p>
 
     <div class="pricing" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-top:14px;">
-      <article class="card" aria-label="Free plan">
+      <article class="card store-plan-card" aria-label="Free plan" style="transition:all 0.3s ease;">
         <div style="display:flex; flex-direction:column; gap:10px;">
           <div>
+            <div style="font-size:42px; margin-bottom:8px;">📊</div>
             <div class="muted" style="font-weight:700; letter-spacing:.02em;" data-i18n="free_plan">Free</div>
             <h3 style="margin:4px 0 10px 0; font-weight:900;" data-i18n="free_plan">Безкоштовний</h3>
             <div class="muted" data-i18n="free_plan_desc">Базовий функціонал для щоденного трекінгу настрою.</div>
@@ -31,9 +119,11 @@
         </div>
       </article>
 
-      <article class="card" aria-label="Premium plan" style="border:1px solid rgba(147,197,253,.25); box-shadow:0 0 0 2px rgba(147,197,253,.15) inset;">
+      <article class="card store-plan-card" aria-label="Premium plan" style="border:1px solid rgba(147,197,253,.25); box-shadow:0 0 0 2px rgba(147,197,253,.15) inset; transition:all 0.3s ease; position:relative;">
+        <div style="position:absolute; top:-12px; right:16px; background:linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; letter-spacing:0.5px;" data-i18n="popular_badge">ПОПУЛЯРНЕ</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
           <div>
+            <div style="font-size:42px; margin-bottom:8px;">✨</div>
             <div style="font-weight:700; color:#60a5fa; letter-spacing:.02em;" data-i18n="premium_plan">Premium</div>
             <h3 style="margin:4px 0 10px 0; font-weight:900;" data-i18n="premium_plan">Преміум</h3>
             <div class="muted" data-i18n="premium_plan_desc">Більше тем, глибша статистика, підтримка розвитку.</div>
@@ -69,17 +159,101 @@
     </div>
   </section>
 
+  <!-- Why Premium Section -->
+  <section class="theme-panel store-section" style="margin-top:32px;">
+    <h2 style="margin-top:0; text-align:center; font-size:28px; font-weight:900;" data-i18n="why_premium_title">💎 Чому варто обрати Premium?</h2>
+    <p class="muted" style="text-align:center; margin-bottom:28px;" data-i18n="why_premium_subtitle">Розширені можливості для глибшого розуміння твого настрою</p>
+    
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">🎨</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_themes_title">Преміум теми</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_themes_desc">Персоналізуй інтерфейс під свій настрій з унікальними темами оформлення</p>
+      </div>
+      
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">🔮</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_predictor_title">Mood Predictor</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_predictor_desc">Прогнозування твого настрою на основі аналізу попередніх записів</p>
+      </div>
+      
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(147,51,234,0.08); border:1px solid rgba(147,51,234,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">💡</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_recommendations_title">Персональні рекомендації</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_recommendations_desc">Отримуй поради для покращення настрою на основі твоїх даних</p>
+      </div>
+      
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">📈</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_analytics_title">Розширена аналітика</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_analytics_desc">Детальна статистика з графіками та трендами для кращого самопізнання</p>
+      </div>
+      
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(79,70,229,0.08); border:1px solid rgba(79,70,229,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">🚀</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_support_title">Пріоритетна підтримка</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_support_desc">Швидка допомога від команди та першочергові оновлення</p>
+      </div>
+      
+      <div class="benefit-card" style="padding:24px; border-radius:14px; background:rgba(219,39,119,0.08); border:1px solid rgba(219,39,119,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">❤️</div>
+        <h3 style="margin:0 0 8px 0; font-weight:800; font-size:18px;" data-i18n="benefit_project_title">Підтримка проєкту</h3>
+        <p class="muted" style="margin:0; font-size:14px;" data-i18n="benefit_project_desc">Допоможи нам розвиватись та додавати нові функції</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="theme-panel store-section" style="margin-top:32px;">
+    <h2 style="margin-top:0; text-align:center; font-size:28px; font-weight:900;" data-i18n="faq_title">❓ Часті питання</h2>
+    
+    <div style="max-width:800px; margin:24px auto 0; display:flex; flex-direction:column; gap:16px;">
+      <details style="padding:20px; border-radius:12px; background:rgba(148,163,184,0.05); border:1px solid rgba(148,163,184,0.15); cursor:pointer;">
+        <summary style="font-weight:700; font-size:16px; margin-bottom:0; cursor:pointer;" data-i18n="faq_payment_q">Як працює оплата Premium?</summary>
+        <p class="muted" style="margin:12px 0 0 0; font-size:14px;" data-i18n="faq_payment_a">Після натискання "Купити" ти будеш перенаправлений на безпечну сторінку оплати. Після успішної оплати Premium активується автоматично.</p>
+      </details>
+      
+      <details style="padding:20px; border-radius:12px; background:rgba(148,163,184,0.05); border:1px solid rgba(148,163,184,0.15); cursor:pointer;">
+        <summary style="font-weight:700; font-size:16px; margin-bottom:0; cursor:pointer;" data-i18n="faq_duration_q">На який термін надається Premium?</summary>
+        <p class="muted" style="margin:12px 0 0 0; font-size:14px;" data-i18n="faq_duration_a">Premium надається на постійній основі після одноразової оплати. Всі функції залишаються доступними без обмежень у часі.</p>
+      </details>
+      
+      <details style="padding:20px; border-radius:12px; background:rgba(148,163,184,0.05); border:1px solid rgba(148,163,184,0.15); cursor:pointer;">
+        <summary style="font-weight:700; font-size:16px; margin-bottom:0; cursor:pointer;" data-i18n="faq_data_q">Чи збережуться мої дані без Premium?</summary>
+        <p class="muted" style="margin:12px 0 0 0; font-size:14px;" data-i18n="faq_data_a">Так! Всі твої записи та дані залишаються у тебе назавжди, навіть якщо ти використовуєш безкоштовну версію.</p>
+      </details>
+      
+      <details style="padding:20px; border-radius:12px; background:rgba(148,163,184,0.05); border:1px solid rgba(148,163,184,0.15); cursor:pointer;">
+        <summary style="font-weight:700; font-size:16px; margin-bottom:0; cursor:pointer;" data-i18n="faq_methods_q">Які способи оплати підтримуються?</summary>
+        <p class="muted" style="margin:12px 0 0 0; font-size:14px;" data-i18n="faq_methods_a">Ми підтримуємо всі популярні способи оплати: банківські картки (Visa, Mastercard), Google Pay, Apple Pay та інші електронні гаманці.</p>
+      </details>
+      
+      <details style="padding:20px; border-radius:12px; background:rgba(148,163,184,0.05); border:1px solid rgba(148,163,184,0.15); cursor:pointer;">
+        <summary style="font-weight:700; font-size:16px; margin-bottom:0; cursor:pointer;" data-i18n="faq_student_q">Чи є знижки для студентів?</summary>
+        <p class="muted" style="margin:12px 0 0 0; font-size:14px;" data-i18n="faq_student_a">Так! Напиши нам на support@dailymood.app з підтвердженням студентського статусу, і ми надамо спеціальну знижку.</p>
+      </details>
+    </div>
+  </section>
+
     <!-- Product Details Modal -->
     <div id="productDetailsModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999;">
-      <div id="productDetailsBackdrop" style="position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px);"></div>
-      <div class="card" role="dialog" aria-modal="true" aria-labelledby="productDetailsTitle" style="position:relative; max-width:720px; width:calc(100% - 32px); z-index:10000; padding:18px 18px 18px 18px;">
-        <button type="button" id="productDetailsClose" class="btn secondary" style="position:absolute; right:12px; top:12px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0;">✕</button>
-        <h3 id="productDetailsTitle" style="margin:0 0 6px 0; font-weight:900; padding-right:56px;">Товар</h3>
-        <div id="productDetailsPrice" class="muted" style="margin-bottom:10px; font-weight:700; padding-right:56px;"></div>
-        <div id="productDetailsBody" class="muted" style="white-space:pre-wrap;"></div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
-          <button type="button" class="btn secondary" id="productDetailsCancel" data-i18n="close">Закрити</button>
-          <button type="button" class="btn" id="productDetailsBuy" data-i18n="buy_now">Купити</button>
+      <div id="productDetailsBackdrop" style="position:absolute; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(6px);"></div>
+      <div class="card" role="dialog" aria-modal="true" aria-labelledby="productDetailsTitle" style="position:relative; max-width:600px; width:calc(100% - 32px); max-height:calc(100vh - 80px); overflow-y:auto; z-index:10000; padding:32px 28px;">
+        <button type="button" id="productDetailsClose" class="btn secondary" style="position:absolute; right:18px; top:18px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; font-size:20px; line-height:1;">✕</button>
+        
+        <div style="max-width:480px; margin:0 auto;">
+          <h3 id="productDetailsTitle" style="margin:0 0 12px 0; font-weight:900; font-size:28px; padding-right:60px; line-height:1.2;">Товар</h3>
+          
+          <div id="productDetailsPrice" style="margin-bottom:20px; font-weight:700; font-size:24px; color:#60a5fa; padding-right:60px;"></div>
+          
+          <div style="border-top:1px solid rgba(148,163,184,0.2); padding-top:20px; margin-bottom:20px;">
+            <div id="productDetailsBody" style="font-size:15px; line-height:1.6; color:rgba(148,163,184,0.95); white-space:pre-wrap;"></div>
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:10px; border-top:1px solid rgba(148,163,184,0.2); padding-top:20px;">
+            <button type="button" class="btn" id="productDetailsBuy" data-i18n="buy_now" style="width:100%; padding:14px; font-size:16px; font-weight:700;">Купити</button>
+            <button type="button" class="btn secondary" id="productDetailsCancel" data-i18n="close" style="width:100%; padding:12px;">Закрити</button>
+          </div>
         </div>
       </div>
     </div>
@@ -299,6 +473,18 @@
     compareClose.addEventListener('click', closeCompare);
     compareCancel.addEventListener('click', closeCompare);
     compareGetPremium.addEventListener('click', () => { closeCompare(); getPremiumBtn.click(); });
+
+    // Hover effects for plan cards
+    document.querySelectorAll('.store-plan-card').forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-4px)';
+        this.style.boxShadow = '0 12px 24px rgba(0,0,0,0.15)';
+      });
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '';
+      });
+    });
 
     loadProducts();
   })();
