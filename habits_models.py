@@ -6,13 +6,17 @@ from models import db
 class Habit(db.Model):
     __tablename__ = 'habits'
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     type = db.Column(db.String(32), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # Зв'язок з користувачем
+    user = db.relationship('User', backref=db.backref('habits', lazy='dynamic', cascade='all, delete-orphan'))
 
     def to_dict(self, include_completions=False):
         d = {
             'id': self.id,
+            'user_id': getattr(self, 'user_id', None),
             'name': self.name,
             'type': self.type,
             'created_at': self.created_at.isoformat()
@@ -38,14 +42,19 @@ class HabitCompletion(db.Model):
 class MonthlyGoal(db.Model):
     __tablename__ = 'monthly_goals'
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(300), nullable=False)
     deadline = db.Column(db.Date, nullable=False)
     completed = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    # Зв'язок з користувачем
+    user = db.relationship('User', backref=db.backref('monthly_goals', lazy='dynamic', cascade='all, delete-orphan'))
+
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': getattr(self, 'user_id', None),
             'name': self.name,
             'deadline': self.deadline.isoformat(),
             'completed': bool(self.completed),

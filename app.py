@@ -84,11 +84,31 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Секретний ключ для сесій (в продакшені використовуйте змінну середовища)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Конфігурація сесії та cookies
-app.config['SESSION_COOKIE_SECURE'] = False  # На розробці, в продакшені встановити True (HTTPS)
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Захист від XSS
-app.config['SESSION_COOKIE_SAMESITE'] = None  # Розробка: без обмежень
-app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 днів
+# Конфігурація сесії та cookies — зчитуємо з оточення, ставимо безпечні значення за замовчуванням
+def _str_to_bool(v, default=False):
+    if v is None:
+        return default
+    return str(v).lower() in ('1', 'true', 'yes', 'on')
+
+# Рекомендується встановлювати у .env.production або в Railway Variables
+app.config['SESSION_COOKIE_SECURE'] = _str_to_bool(os.environ.get('SESSION_COOKIE_SECURE'), default=(os.environ.get('FLASK_ENV') == 'production'))
+app.config['SESSION_COOKIE_HTTPONLY'] = _str_to_bool(os.environ.get('SESSION_COOKIE_HTTPONLY'), default=True)
+# SESSION_COOKIE_SAMESITE: 'Lax', 'Strict', or 'None' (None -> browser default / unset)
+_samesite = os.environ.get('SESSION_COOKIE_SAMESITE')
+if _samesite is None:
+    # production default: Lax, development: None (to allow flexible testing)
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' if os.environ.get('FLASK_ENV') == 'production' else None
+else:
+    # allow explicit 'None' value to mean None (not the string)
+    if str(_samesite).lower() in ('none', 'null'):
+        app.config['SESSION_COOKIE_SAMESITE'] = None
+    else:
+        app.config['SESSION_COOKIE_SAMESITE'] = str(_samesite)
+
+try:
+    app.config['PERMANENT_SESSION_LIFETIME'] = int(os.environ.get('PERMANENT_SESSION_LIFETIME', 2592000))
+except Exception:
+    app.config['PERMANENT_SESSION_LIFETIME'] = 2592000
 
 # Конфігурація постійного збереження сесій на диск
 session_dir = os.path.join(basedir, 'data', 'sessions')
@@ -353,6 +373,34 @@ def ensure_mood_entry_user_id():
         logging.error("Не вдалося гарантувати наявність user_id у mood_entries: %s", exc)
 
 
+def ensure_habit_user_column():
+    """Додає колонку user_id до таблиці habits, якщо її немає."""
+    try:
+        inspector = inspect(db.engine)
+        if 'habits' in inspector.get_table_names():
+            columns = {col['name'] for col in inspector.get_columns('habits')}
+            if 'user_id' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE habits ADD COLUMN user_id INTEGER'))
+                logging.info('Додано колонку user_id до таблиці habits')
+    except Exception as exc:
+        logging.error('Не вдалося додати колонку user_id у habits: %s', exc)
+
+
+def ensure_goal_user_column():
+    """Додає колонку user_id до таблиці monthly_goals, якщо її немає."""
+    try:
+        inspector = inspect(db.engine)
+        if 'monthly_goals' in inspector.get_table_names():
+            columns = {col['name'] for col in inspector.get_columns('monthly_goals')}
+            if 'user_id' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE monthly_goals ADD COLUMN user_id INTEGER'))
+                logging.info('Додано колонку user_id до таблиці monthly_goals')
+    except Exception as exc:
+        logging.error('Не вдалося додати колонку user_id у monthly_goals: %s', exc)
+
+
 with app.app_context():
     db.create_all()
     # Виконуємо допоміжні ALTER-и лише для SQLite (локальні оновлення схеми)
@@ -362,6 +410,8 @@ with app.app_context():
             ensure_user_premium_columns()
             ensure_user_advice_unlock_column()
             ensure_mood_entry_user_id()
+            ensure_habit_user_column()
+            ensure_goal_user_column()
         else:
             logging.info("Skipping SQLite-specific schema helpers for %s", db.engine.dialect.name)
     except Exception:
@@ -1179,6 +1229,7 @@ def get_habits():
 
 
 @app.route('/api/habits', methods=['POST'])
+@login_required
 def create_habit():
     try:
         data = request.get_json(silent=True) or {}
@@ -1188,7 +1239,9 @@ def create_habit():
         if not name:
             return jsonify({'status': 'error', 'message': 'Назва звички обов\'язкова'}), 400
         
-        habit = Habit(name=name, type=habit_type)
+        # Прив'язати звичку до поточного користувача
+        user_id = session.get('user_id')
+        habit = Habit(name=name, type=habit_type, user_id=user_id)
         db.session.add(habit)
         db.session.commit()
         
@@ -1241,7 +1294,12 @@ def delete_habit(habit_id):
 @app.route('/api/goals', methods=['GET'])
 def get_goals():
     try:
-        goals = MonthlyGoal.query.order_by(MonthlyGoal.deadline).all()
+        # Повертаємо тільки цілі поточного користувача
+        user_id = session.get('user_id')
+        if user_id:
+            goals = MonthlyGoal.query.filter_by(user_id=user_id).order_by(MonthlyGoal.deadline).all()
+        else:
+            goals = []
         return jsonify([g.to_dict() for g in goals]), 200
     except Exception as e:
         logging.error(f"Error fetching goals: {str(e)}")
@@ -1256,7 +1314,11 @@ def create_goal():
             return jsonify({'status': 'error', 'message': 'Missing name or deadline'}), 400
         from datetime import datetime as _dt
         deadline = _dt.strptime(data['deadline'], '%Y-%m-%d').date()
-        goal = MonthlyGoal(name=data['name'].strip(), deadline=deadline)
+        # Прив'язати ціль до користувача
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'Не авторизовано'}), 401
+        goal = MonthlyGoal(name=data['name'].strip(), deadline=deadline, user_id=user_id)
         db.session.add(goal)
         db.session.commit()
         return jsonify({'status': 'success', 'data': goal.to_dict()}), 201
