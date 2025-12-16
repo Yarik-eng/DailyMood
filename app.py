@@ -2099,6 +2099,34 @@ def mood_predictor():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+
+@app.route('/api/premium/initiate', methods=['POST'])
+@login_required
+def initiate_premium_purchase():
+    """Initiate a checkout order for Premium feature (no Product required).
+
+    Returns JSON with `order_id` so frontend can redirect to `/checkout?order_id=`.
+    The created order has status 'new' and no order items.
+    """
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'status': 'error', 'message': 'Користувача не знайдено'}), 404
+
+        data = request.get_json(silent=True) or {}
+        price = float(data.get('price', 0.0))
+
+        order = Order(user_id=user.id, status='new', total_amount=price)
+        db.session.add(order)
+        db.session.commit()
+
+        return jsonify({'status': 'success', 'order_id': order.id}), 201
+    except Exception as exc:
+        db.session.rollback()
+        logging.exception('Failed to initiate premium purchase')
+        return jsonify({'status': 'error', 'message': 'Не вдалося ініціювати покупку'}), 500
+
+
 @app.route('/api/premium/sleep-trends', methods=['GET'])
 @login_required
 def sleep_trends():

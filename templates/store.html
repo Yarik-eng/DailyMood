@@ -461,10 +461,38 @@ details > *:not(summary) {
       }
     }
 
-    getPremiumBtn.addEventListener('click', () => {
+    getPremiumBtn.addEventListener('click', async () => {
       const premium = findPremiumProduct();
-      if(premium){ buyNow(premium); }
-      else { alert('Преміум поки недоступний. Спробуйте пізніше.'); }
+      if(premium){
+        buyNow(premium);
+        return;
+      }
+
+      // Якщо товар "Преміум" відсутній у products, ініціюємо окреме замовлення для Premium
+      try {
+        const r = await fetch('/api/premium/initiate', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ price: 0 })
+        });
+        if(r.status === 401){
+          window.location.href = '/auth/login?next=' + encodeURIComponent('/store');
+          return;
+        }
+        if(!r.ok) throw new Error('initiate');
+        const payload = await r.json();
+        const orderId = payload && payload.order_id;
+        if(orderId){
+          // Редірект на сторінку оплати
+          window.location.href = '/checkout?order_id=' + orderId;
+        } else {
+          alert('Не вдалося оформити замовлення для Premium. Спробуйте пізніше.');
+        }
+      } catch(err){
+        console.error('Premium initiate failed', err);
+        alert('Не вдалося оформити замовлення. Спробуйте ще раз.');
+      }
     });
 
     premiumDetailsBtn.addEventListener('click', openCompare);
